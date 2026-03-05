@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MarmoCult App</title>
+<style>
+:root{--bg:#f5f5f5;--bg2:#fff;--bg3:#f8f8f8;--bg4:#fafafa;--text:#333;--text2:#555;--text3:#666;--text4:#888;--text5:#999;--border:#ccc;--border2:#ddd;--border3:#eee;--border4:#f0f0f0;--accent:#E8992C;--accent2:#d08525;--accent-bg:rgba(232,153,44,.15);--accent-light:#fff3e0;--shadow:rgba(0,0,0,.08);--shadow2:rgba(0,0,0,.1)}
+[data-theme="dark"]{--bg:#1a1a2e;--bg2:#16213e;--bg3:#1a1a2e;--bg4:#0f3460;--text:#e0e0e0;--text2:#b0b0b0;--text3:#a0a0a0;--text4:#808080;--text5:#707070;--border:#3a3a5c;--border2:#2a2a4c;--border3:#2a2a4c;--border4:#252545;--accent:#E8992C;--accent2:#f0a030;--accent-bg:rgba(232,153,44,.2);--accent-light:#2a2040;--shadow:rgba(0,0,0,.3);--shadow2:rgba(0,0,0,.3)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .3s,color .3s}
+.header{background:var(--bg2);border-bottom:3px solid var(--accent);padding:12px 24px;display:flex;align-items:center;gap:16px;box-shadow:0 2px 4px var(--shadow)}
+.header img{height:50px}
+.header h1{font-size:1.4rem;color:var(--text)}
+.header h1 span{color:var(--accent)}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.toggle-dark{background:none;border:2px solid var(--accent);border-radius:20px;width:44px;height:24px;cursor:pointer;position:relative;transition:background .3s}
+.toggle-dark::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--accent);transition:transform .3s}
+[data-theme="dark"] .toggle-dark::after{transform:translateX(20px)}
+.toggle-label{font-size:.75rem;color:var(--text3)}
+.tabs{display:flex;background:var(--bg2);border-bottom:1px solid var(--border2)}
+.tab{flex:1;padding:14px;text-align:center;cursor:pointer;font-weight:600;color:var(--text3);border-bottom:3px solid transparent;transition:all .2s}
+.tab:hover{background:var(--bg4)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.content{max-width:960px;margin:0 auto;padding:20px}
+.card{background:var(--bg2);border-radius:8px;padding:20px;margin-bottom:16px;box-shadow:0 1px 3px var(--shadow2)}
+.card h2{color:var(--accent);margin-bottom:16px;font-size:1.1rem;border-bottom:2px solid var(--border4);padding-bottom:8px}
+label{display:block;font-weight:600;margin-bottom:4px;color:var(--text2);font-size:.9rem}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;font-size:.95rem;margin-bottom:12px;background:var(--bg2);color:var(--text)}
+input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-bg)}
+select{background:var(--bg2)}
+.row{display:flex;gap:12px}
+.row>*{flex:1}
+.btn{padding:10px 20px;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:.9rem;transition:all .2s}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent2)}
+.btn-secondary{background:var(--text3);color:#fff}
+.btn-secondary:hover{background:var(--text2)}
+.btn-danger{background:#dc3545;color:#fff}
+.btn-danger:hover{background:#c82333}
+.btn-outline{background:transparent;border:2px solid var(--accent);color:var(--accent)}
+.btn-outline:hover{background:var(--accent);color:#fff}
+.btn-sm{padding:6px 12px;font-size:.8rem}
+.btn-group{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+table{width:100%;border-collapse:collapse;margin-top:8px}
+th{background:var(--bg3);color:var(--text3);font-size:.8rem;text-transform:uppercase;letter-spacing:.5px;padding:10px 8px;text-align:left;border-bottom:2px solid var(--border3)}
+td{padding:10px 8px;border-bottom:1px solid var(--border4);font-size:.9rem}
+tr:hover{background:var(--bg4)}
+.piece-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;padding:8px;background:var(--bg3);border-radius:6px}
+.piece-row input{margin-bottom:0;width:120px}
+.piece-row .piece-label{font-size:.85rem;color:var(--text3);min-width:50px}
+.piece-row .piece-result{font-weight:600;color:var(--accent);min-width:100px;text-align:right}
+.remove-btn{background:#dc3545;color:#fff;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:1rem;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.remove-btn:hover{background:#c82333}
+.total-box{background:linear-gradient(135deg,#E8992C,#d08525);color:#fff;border-radius:8px;padding:20px;margin-top:16px}
+.total-box h3{font-size:1rem;margin-bottom:12px;opacity:.9}
+.total-line{display:flex;justify-content:space-between;padding:6px 0;font-size:.95rem;border-bottom:1px solid rgba(255,255,255,.2)}
+.total-line.grand{font-size:1.3rem;font-weight:700;border-top:2px solid rgba(255,255,255,.4);border-bottom:none;margin-top:8px;padding-top:12px}
+.currency-box{background:var(--accent-light);border:1px solid var(--accent);border-radius:6px;padding:12px;margin-bottom:12px}
+.currency-box label{color:var(--accent)}
+.badge{display:inline-block;padding:3px 8px;border-radius:12px;font-size:.75rem;font-weight:600}
+.badge-usd{background:#e3f2fd;color:#1565c0}
+.badge-ars{background:#e8f5e9;color:#2e7d32}
+[data-theme="dark"] .badge-usd{background:#1a3a5c;color:#64b5f6}
+[data-theme="dark"] .badge-ars{background:#1a3c1a;color:#81c784}
+.hidden{display:none}
+.only-print{display:none}
+.empty-state{text-align:center;padding:40px;color:var(--text5)}
+.empty-state p{margin-top:8px}
+.sortable{cursor:pointer;user-select:none}
+.sortable:hover{color:var(--accent)}
+.sortable::after{content:" ⇅";font-size:.7rem}
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000}
+.modal{background:var(--bg2);border-radius:12px;padding:24px;max-width:700px;width:90%;max-height:80vh;overflow-y:auto;color:var(--text)}
+.modal h2{color:var(--accent);margin-bottom:16px}
+.modal-close{float:right;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text3)}
+.cat-header{background:var(--bg3);padding:10px 12px;margin:12px 0 8px;border-radius:6px;font-weight:700;color:var(--text2);display:flex;justify-content:space-between;align-items:center;font-size:.95rem}
+.price-input{width:100px;padding:6px 8px;text-align:right;margin-bottom:0}
+.item-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border4)}
+.item-row .item-name{flex:1}
+.item-row .item-detail{color:var(--text4);font-size:.85rem;min-width:60px}
+/* Searchable select */
+.search-select{position:relative}
+.search-select input{margin-bottom:0}
+.search-dropdown{position:absolute;top:100%;left:0;right:0;max-height:250px;overflow-y:auto;background:var(--bg2);border:1px solid var(--border);border-radius:0 0 6px 6px;z-index:100;box-shadow:0 4px 12px var(--shadow2)}
+.search-dropdown .dd-group{padding:6px 10px;font-size:.75rem;font-weight:700;color:var(--accent);text-transform:uppercase;background:var(--bg3)}
+.search-dropdown .dd-item{padding:8px 12px;cursor:pointer;font-size:.9rem;display:flex;justify-content:space-between}
+.search-dropdown .dd-item:hover{background:var(--accent-bg)}
+.search-dropdown .dd-item .dd-price{color:var(--text4);font-size:.85rem}
+/* Print */
+.print-contacto,.print-condiciones{display:none}
+@media print{
+  .tabs,.btn,.btn-group,.header-right,.toggle-dark,.toggle-label,#tc-box,.search-select,.piece-row button,#items-adicionales+div,#items-custom+div,.card:has(h2:empty),.print-hide{display:none!important}
+  body{background:#fff!important;color:#000!important;font-size:10px!important}
+  .header{border-bottom:2px solid #E8992C;box-shadow:none;padding:6px;text-align:center;display:block}
+  .header img{height:60px;display:block;margin:0 auto 4px}
+  .header h1{display:none!important}
+  .content{padding:4px;max-width:100%}
+  .card{padding:6px 8px;margin-bottom:4px;box-shadow:none;border:1px solid #ddd;page-break-inside:avoid}
+  .card h2{font-size:.85rem;margin-bottom:4px;padding-bottom:2px}
+  .piece-row{padding:2px 4px;margin-bottom:2px;font-size:.8rem}
+  .piece-row input{padding:2px 4px;font-size:.8rem}
+  .row{gap:6px}
+  label{margin-bottom:1px;font-size:.8rem}
+  input{padding:4px 6px;margin-bottom:4px;font-size:.8rem}
+  .total-box{padding:10px;margin-top:6px;background:#fff!important;color:#000!important;border:2px solid #E8992C;border-radius:8px}
+  .total-box h3{font-size:.95rem;margin-bottom:6px;color:#E8992C!important}
+  .total-line{padding:3px 0;font-size:.95rem;color:#000!important;border-bottom-color:rgba(0,0,0,.1)!important}
+  .total-line.grand{font-size:1.2rem;padding-top:6px;margin-top:4px;border-top-color:rgba(0,0,0,.3)!important}
+  .no-print{display:none!important}
+  .only-print{display:inline!important}
+  .unit-m{font-size:.8rem;margin-left:1px;color:#555}
+  .tabs+*{display:block!important}
+  .print-condiciones{display:block!important;margin-top:6px;padding:6px;font-size:.8rem;color:#333;line-height:1.5}
+  .print-condiciones p{margin-bottom:2px}
+  .print-contacto{display:block!important;text-align:center;margin-top:6px;padding:6px;border-top:2px solid #E8992C;font-size:.8rem;color:#555}
+  .print-contacto strong{color:#E8992C}
+  @page{size:A4;margin:8mm}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+<img src="logo.jpeg" alt="MarmoCult">
+<h1>Marmo<span>Cult</span> App</h1>
+<div class="header-right">
+  <span class="toggle-label" id="theme-label">Modo Oscuro</span>
+  <button class="toggle-dark" onclick="toggleDark()" title="Modo oscuro"></button>
+</div>
+</div>
+
+<div class="tabs">
+<div class="tab active" onclick="showTab('presupuesto')">Nuevo Presupuesto</div>
+<div class="tab" onclick="showTab('precios')">Lista de Precios</div>
+<div class="tab" onclick="showTab('historial')">Historial</div>
+</div>
+
+<div id="tab-presupuesto" class="content">
+  <div class="card">
+    <h2>Datos del Presupuesto</h2>
+    <div class="row">
+      <div>
+        <label>Nombre del Cliente</label>
+        <input type="text" id="cliente-nombre" placeholder="Ej: Juan Perez">
+      </div>
+      <div>
+        <label>Realizado por</label>
+        <input type="text" id="realizado-por" placeholder="Nombre del vendedor">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Plazo de entrega</label>
+        <input type="text" id="plazo-entrega" placeholder="Ej: 15 dias habiles">
+      </div>
+      <div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Material</h2>
+    <label><span class="no-print">Seleccionar Material (escriba para filtrar)</span><span class="only-print"></span></label>
+    <div class="search-select" id="mat-search-wrap">
+      <input type="text" id="mat-search" placeholder="Buscar material..." autocomplete="off" onfocus="openMatDropdown()" oninput="filterMateriales()">
+      <div class="search-dropdown hidden" id="mat-dropdown"></div>
+    </div>
+    <input type="hidden" id="material-idx">
+    <div class="only-print" id="print-material" style="font-size:1rem;font-weight:600;margin-bottom:8px"></div>
+    <div class="row print-hide" style="margin-top:8px">
+      <div>
+        <label>Precio por m² (editable)</label>
+        <input type="number" id="precio-m2" step="0.01" onchange="recalc()">
+      </div>
+      <div>
+        <label>Moneda</label>
+        <input type="text" id="moneda-display" readonly>
+      </div>
+    </div>
+    <div id="tc-box" class="currency-box hidden">
+      <label>Tipo de Cambio (1 USD = ? ARS)</label>
+      <input type="number" id="tipo-cambio" step="0.01" value="1435" onchange="recalc()">
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Piezas de Mesada</h2>
+    <div id="mesada-piezas"></div>
+    <button class="btn btn-outline btn-sm" onclick="addMesadaPieza()">+ Agregar Pieza</button>
+  </div>
+
+  <div class="card">
+    <h2>Piezas de Zocalo</h2>
+    <div id="zocalo-piezas"></div>
+    <button class="btn btn-outline btn-sm" onclick="addZocaloPieza()">+ Agregar Pieza</button>
+  </div>
+
+  <div class="card">
+    <h2>Agregados</h2>
+    <div id="items-adicionales"></div>
+    <div style="margin-top:8px">
+      <label>Agregar item predefinido</label>
+      <select id="item-select">
+        <option value="">-- Seleccionar item --</option>
+      </select>
+      <button class="btn btn-outline btn-sm" style="margin-top:4px" onclick="addItemFromSelect()">+ Agregar Item</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Otros Adicionales</h2>
+    <div id="items-custom"></div>
+    <div class="row" style="align-items:end">
+      <div><label>Nombre</label><input type="text" id="custom-nombre" placeholder="Ej: Bacha E60" style="margin-bottom:0"></div>
+      <div><label>Precio ($)</label><input type="number" id="custom-precio" step="0.01" style="margin-bottom:0"></div>
+      <div><label>Cant.</label><input type="number" id="custom-cant" value="1" min="1" style="margin-bottom:0"></div>
+      <div style="flex:0"><button class="btn btn-outline btn-sm" onclick="addCustomItem()">+</button></div>
+    </div>
+  </div>
+
+  <div class="total-box" id="total-box">
+    <h3>Resumen del Presupuesto</h3>
+    <div id="resumen-lines"></div>
+  </div>
+
+  <div class="print-condiciones">
+    <p>El presupuesto puede variar sin previo aviso.</p>
+    <p></p>
+    <p>El trabajo se entrega colocado en obra sin instalacion electrica ni sanitaria.</p>
+    <p>Condicion de pago: 50% para la seña y 50% restante cuando se entrega el trabajo.<span id="print-plazo"></span></p>
+  </div>
+
+  <div class="print-contacto">
+    <strong>MarmoCult</strong><br>
+    General Soler 2182, Rio Cuarto, Cordoba<br>
+    WhatsApp: 358 155124623 | Tel: 4630497 | E-mail: contacto@marmocult.com.ar
+  </div>
+
+  <div class="btn-group" style="margin-top:16px">
+    <button class="btn btn-primary" onclick="guardarPresupuesto()">Guardar Presupuesto</button>
+    <button class="btn btn-secondary" onclick="limpiarPresupuesto()">Limpiar</button>
+    <button class="btn btn-outline" onclick="imprimirPresupuesto()">Imprimir</button>
+    <button class="btn btn-outline" onclick="copiarPresupuesto()">Copiar al Portapapeles</button>
+  </div>
+</div>
+
+<div id="tab-precios" class="content hidden">
+  <div class="card">
+    <h2>Lista de Precios de Materiales</h2>
+    <p style="font-size:.85rem;color:var(--text4);margin-bottom:12px">Edite los precios directamente. Los cambios se guardan automaticamente.</p>
+    <div id="precios-materiales"></div>
+    <div class="cat-header" style="margin-top:16px;background:var(--accent);color:#fff;border-radius:6px">
+      <span>Agregar Nuevo Material</span>
+    </div>
+    <div class="row" style="margin-top:8px;align-items:end">
+      <div><label>Categoria</label>
+        <select id="new-mat-cat" style="margin-bottom:0"></select>
+        <div style="margin-top:4px"><input type="text" id="new-mat-cat-custom" placeholder="O escriba nueva categoria..." style="margin-bottom:0;font-size:.85rem"></div>
+      </div>
+      <div><label>Nombre</label><input type="text" id="new-mat-nombre" style="margin-bottom:0"></div>
+      <div><label>Espesor</label><input type="text" id="new-mat-espesor" value="2 CM" style="margin-bottom:0"></div>
+      <div><label>Precio</label><input type="number" id="new-mat-precio" step="0.01" style="margin-bottom:0"></div>
+      <div><label>Moneda</label><select id="new-mat-moneda" style="margin-bottom:0"><option value="ARS">ARS</option><option value="USD">USD</option></select></div>
+      <div style="flex:0"><button class="btn btn-primary btn-sm" onclick="addNewMaterial()">+</button></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Agregados (Precios)</h2>
+    <div id="precios-items"></div>
+    <div class="row" style="margin-top:12px;align-items:end">
+      <div><label>Nombre</label><input type="text" id="new-item-nombre" style="margin-bottom:0"></div>
+      <div><label>Precio ($)</label><input type="number" id="new-item-precio" step="0.01" style="margin-bottom:0"></div>
+      <div style="flex:0"><button class="btn btn-primary btn-sm" onclick="addNewItem()">+</button></div>
+    </div>
+  </div>
+
+  <div class="btn-group">
+    <button class="btn btn-outline" onclick="exportPrecios()">Exportar Precios (JSON)</button>
+    <button class="btn btn-outline" onclick="document.getElementById('import-precios-file').click()">Importar Precios (JSON)</button>
+    <input type="file" id="import-precios-file" accept=".json" class="hidden" onchange="importPrecios(event)">
+  </div>
+</div>
+
+<div id="tab-historial" class="content hidden">
+  <div class="card">
+    <h2>Historial de Presupuestos</h2>
+    <div class="btn-group" style="margin-bottom:12px">
+      <button class="btn btn-outline btn-sm" onclick="exportHistorial('mes')">Exportar Mes Actual</button>
+      <button class="btn btn-outline btn-sm" onclick="exportHistorial('rango')">Exportar por Rango</button>
+      <button class="btn btn-outline btn-sm" onclick="exportHistorial('anio')">Exportar Año Completo</button>
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-hist-file').click()">Importar JSON</button>
+      <input type="file" id="import-hist-file" accept=".json" class="hidden" onchange="importHistorial(event)">
+    </div>
+    <div id="rango-export" class="hidden" style="margin-bottom:12px">
+      <div class="row">
+        <div><label>Desde</label><input type="month" id="rango-desde"></div>
+        <div><label>Hasta</label><input type="month" id="rango-hasta"></div>
+        <div style="flex:0;align-self:end"><button class="btn btn-primary btn-sm" onclick="doExportRango()">Exportar</button></div>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th class="sortable" onclick="sortHistorial('fecha')">Fecha</th>
+          <th class="sortable" onclick="sortHistorial('cliente')">Cliente</th>
+          <th>Material</th>
+          <th class="sortable" onclick="sortHistorial('total')">Total</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="historial-body"></tbody>
+    </table>
+    <div id="historial-empty" class="empty-state hidden">
+      <p style="font-size:2rem">📋</p>
+      <p>No hay presupuestos guardados</p>
+    </div>
+  </div>
+</div>
+
+<div id="modal-container"></div>
+
+<script>
+// ========== DATA ==========
+const DEFAULT_MATERIALES = [
+  {cat:"Granitos Nacionales",nombre:"ROSA DEL SALTO",espesor:"2 CM",precio:195200,moneda:"ARS"},
+  {cat:"Granitos Nacionales",nombre:"ORCOLLANO",espesor:"2 CM",precio:195200,moneda:"ARS"},
+  {cat:"Granitos Nacionales",nombre:"GRIS PERLA",espesor:"2 CM",precio:232000,moneda:"ARS"},
+  {cat:"Granitos Nacionales",nombre:"GRIS MARA",espesor:"2 CM",precio:244800,moneda:"ARS"},
+  {cat:"Granitos Nacionales",nombre:"BLACK COSMIC",espesor:"2 CM",precio:265600,moneda:"ARS"},
+  {cat:"Granitos Nacionales",nombre:"NEGRO BROREAL",espesor:"2 CM",precio:267200,moneda:"ARS"},
+  {cat:"Granitos Nacionales",nombre:"GRIS PERLA LEATHER",espesor:"2 CM",precio:253500,moneda:"ARS"},
+  {cat:"Granitos Nacionales",nombre:"GRIS MARA LEATHER",espesor:"2 CM",precio:270400,moneda:"ARS"},
+  {cat:"Granitos Nacionales",nombre:"BLACK COSMIC LEATHER",espesor:"2 CM",precio:292200,moneda:"ARS"},
+  {cat:"Granitos Nacionales",nombre:"NEGRO BROREAL LEATHER",espesor:"2 CM",precio:294400,moneda:"ARS"},
+  {cat:"Granitos Nacionales",nombre:"AMADEUS LEATHER",espesor:"2 CM",precio:307200,moneda:"ARS"},
+  {cat:"Granitos Importados",nombre:"NEGRO BRASIL",espesor:"2 CM",precio:320,moneda:"USD"},
+  {cat:"Granitos Importados",nombre:"EBONY CRISTAL",espesor:"2 CM",precio:355,moneda:"USD"},
+  {cat:"Granitos Importados",nombre:"NEGRO BRASIL LEATHER",espesor:"2 CM",precio:355,moneda:"USD"},
+  {cat:"Granitos Importados",nombre:"EBONY CRISTAL LEATHER",espesor:"2 CM",precio:385,moneda:"USD"},
+  {cat:"Marmoles Importados",nombre:"BEIGE MIELE",espesor:"2 CM",precio:320,moneda:"USD"},
+  {cat:"Marmoles Importados",nombre:"BLANCO TURCO",espesor:"2 CM",precio:435,moneda:"USD"},
+  {cat:"Marmoles Importados",nombre:"CARRARA C / D",espesor:"2 CM",precio:435,moneda:"USD"},
+  {cat:"Marmoles Importados",nombre:"NEW BEIGE",espesor:"2 CM",precio:435,moneda:"USD"},
+  {cat:"Marmoles Importados",nombre:"MOONBEIGE",espesor:"2 CM",precio:545,moneda:"USD"},
+  {cat:"Marmoles Importados",nombre:"TUNDRA GREY",espesor:"2 CM",precio:545,moneda:"USD"},
+  {cat:"Marmoles Importados",nombre:"MARRON BOSQUE",espesor:"2 CM",precio:640,moneda:"USD"},
+  {cat:"Marmoles Importados",nombre:"NEGRO MARQUINA",espesor:"2 CM",precio:960,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"ABSOLUTE BLACK - M",espesor:"12 MM",precio:490,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"AURORA - M VETA PASANTE",espesor:"12 MM",precio:490,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"BIANCO LASA - M",espesor:"12 MM",precio:490,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"CALACATTA ANTICO - M",espesor:"12 MM",precio:490,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"CALACATTA BORGHINI - 3D",espesor:"12 MM",precio:490,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"CEPPO DI GRE - M",espesor:"12 MM",precio:490,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"CORALINA - 3D",espesor:"12 MM",precio:490,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"DAZZLE - M",espesor:"12 MM",precio:490,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"IVORY DESERT - M",espesor:"12 MM",precio:490,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"LIMESTONE - M",espesor:"12 MM",precio:490,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"METRO CREAM - M",espesor:"12 MM",precio:490,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"METRO GREY - M",espesor:"12 MM",precio:490,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"ARIA 25 - P / M",espesor:"12 MM",precio:615,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"BLANCO ZEN - P / M",espesor:"12 MM",precio:615,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"BRONZE ARMANI - M",espesor:"12 MM",precio:615,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"DESERT BLACK - M",espesor:"12 MM",precio:615,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"FIOR DI BOSCO - M",espesor:"12 MM",precio:615,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"NEGRO MARQUINA - P",espesor:"12 MM",precio:615,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"ONYX BLACK - M",espesor:"12 MM",precio:615,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"ONYX WHITE - 3D",espesor:"12 MM",precio:615,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"PATAGONIA GOLD - P / M",espesor:"12 MM",precio:615,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"SUMMER CALM - M",espesor:"12 MM",precio:615,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"TITANIUM BLACK - M",espesor:"12 MM",precio:615,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"TRAVERTINO NAVONA - 3D",espesor:"12 MM",precio:615,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"TUNDRA DARK - M",espesor:"12 MM",precio:615,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"ALPINUS WHITE - 3D",espesor:"12 MM",precio:705,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"BRESCIA IMPERIALE - 3D",espesor:"12 MM",precio:705,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"CALACATTA VAGLI - P",espesor:"12 MM",precio:705,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"GRIS MANHATAN - M",espesor:"12 MM",precio:705,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"MACCIA VECCIA - P / M",espesor:"12 MM",precio:705,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"ORA GOLD - P / M",espesor:"12 MM",precio:705,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"TAJ MAHAL - M",espesor:"12 MM",precio:705,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"TOSCANA VENA - 3D",espesor:"12 MM",precio:705,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"VERDE SELVA - 3C",espesor:"12 MM",precio:705,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"VENA ORO - 3D",espesor:"12 MM",precio:705,moneda:"USD"},
+];
+
+const DEFAULT_ITEMS = [
+  {nombre:"Trasforo bacha o anafe",precio:72000},
+  {nombre:"Trasforo griferia / llave de gas",precio:19200},
+  {nombre:"Trasforo bacha de apoyo baño",precio:40000},
+  {nombre:"Trasforo de caja de luz en revestimiento",precio:19200},
+  {nombre:"Armado de pata",precio:96000},
+  {nombre:"Armado de bacha integrada",precio:528000},
+  {nombre:"Fondo de acero para bacha integrada",precio:208000},
+  {nombre:"Armado de totem",precio:528000},
+  {nombre:"Pulido de interiores de patas simples",precio:96000},
+  {nombre:"Metro lineal de frente doble - inglete",precio:72000},
+  {nombre:"Metro lineal de corte especial o circular",precio:72000},
+];
+
+// ========== STATE ==========
+let materiales = [];
+let items = [];
+let historial = [];
+let mesadaPiezas = [];
+let zocaloPiezas = [];
+let itemsPresupuesto = [];
+let customItems = [];
+let sortField = 'fecha';
+let sortDir = -1;
+let nextPieceId = 1;
+let selectedMatIdx = null;
+
+// ========== DARK MODE ==========
+function toggleDark() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', isDark ? '' : 'dark');
+  localStorage.setItem('marmocult_theme', isDark ? 'light' : 'dark');
+}
+function loadTheme() {
+  const t = localStorage.getItem('marmocult_theme');
+  if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+}
+loadTheme();
+
+// ========== PERSISTENCE ==========
+function loadData() {
+  const mp = localStorage.getItem('marmocult_precios');
+  if (mp) {
+    const d = JSON.parse(mp);
+    materiales = d.materiales || JSON.parse(JSON.stringify(DEFAULT_MATERIALES));
+    items = d.items || JSON.parse(JSON.stringify(DEFAULT_ITEMS));
+  } else {
+    materiales = JSON.parse(JSON.stringify(DEFAULT_MATERIALES));
+    items = JSON.parse(JSON.stringify(DEFAULT_ITEMS));
+  }
+  const h = localStorage.getItem('marmocult_historial');
+  historial = h ? JSON.parse(h) : [];
+}
+
+function savePrecios() {
+  localStorage.setItem('marmocult_precios', JSON.stringify({materiales, items}));
+}
+
+function saveHistorial() {
+  localStorage.setItem('marmocult_historial', JSON.stringify(historial));
+}
+
+// ========== TABS ==========
+function showTab(name) {
+  document.querySelectorAll('.content').forEach(el => el.classList.add('hidden'));
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.remove('hidden');
+  const tabs = document.querySelectorAll('.tab');
+  const idx = {presupuesto:0, precios:1, historial:2}[name];
+  tabs[idx].classList.add('active');
+  if (name === 'precios') renderPrecios();
+  if (name === 'historial') renderHistorial();
+}
+
+// ========== FORMAT ==========
+function fmt(n) {
+  return '$' + Math.round(n).toLocaleString('es-AR');
+}
+
+// ========== SEARCHABLE MATERIAL SELECT ==========
+function openMatDropdown() {
+  renderMatDropdown('');
+  document.getElementById('mat-dropdown').classList.remove('hidden');
+}
+
+function filterMateriales() {
+  const q = document.getElementById('mat-search').value;
+  renderMatDropdown(q);
+  document.getElementById('mat-dropdown').classList.remove('hidden');
+}
+
+function renderMatDropdown(query) {
+  const dd = document.getElementById('mat-dropdown');
+  const q = query.toLowerCase().trim();
+  let html = '';
+  let lastCat = '';
+  materiales.forEach((m, i) => {
+    if (q && !m.nombre.toLowerCase().includes(q) && !m.cat.toLowerCase().includes(q)) return;
+    if (m.cat !== lastCat) {
+      lastCat = m.cat;
+      html += '<div class="dd-group">' + m.cat + '</div>';
+    }
+    const pLabel = m.moneda === 'USD' ? 'USD ' + m.precio : fmt(m.precio);
+    html += '<div class="dd-item" onclick="selectMaterial(' + i + ')">' +
+      '<span>' + m.nombre + ' <small style="color:var(--text4)">(' + m.espesor + ')</small></span>' +
+      '<span class="dd-price">' + pLabel + '</span></div>';
+  });
+  if (!html) html = '<div style="padding:12px;color:var(--text4);text-align:center">Sin resultados</div>';
+  dd.innerHTML = html;
+}
+
+function selectMaterial(idx) {
+  selectedMatIdx = idx;
+  const m = materiales[idx];
+  document.getElementById('mat-search').value = m.nombre + ' (' + m.espesor + ')';
+  document.getElementById('material-idx').value = idx;
+  document.getElementById('print-material').textContent = m.nombre + ' — ' + m.cat;
+  document.getElementById('mat-dropdown').classList.add('hidden');
+  document.getElementById('precio-m2').value = m.precio;
+  document.getElementById('moneda-display').value = m.moneda;
+  if (m.moneda === 'USD') {
+    document.getElementById('tc-box').classList.remove('hidden');
+  } else {
+    document.getElementById('tc-box').classList.add('hidden');
+  }
+  recalc();
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e) {
+  const wrap = document.getElementById('mat-search-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    document.getElementById('mat-dropdown').classList.add('hidden');
+  }
+});
+
+function populateItemSelect() {
+  const sel = document.getElementById('item-select');
+  sel.innerHTML = '<option value="">-- Seleccionar item --</option>';
+  items.forEach((it, i) => {
+    sel.innerHTML += '<option value="' + i + '">' + it.nombre + ' - ' + fmt(it.precio) + '</option>';
+  });
+}
+
+// ========== PRESUPUESTO PIECES ==========
+function addMesadaPieza() {
+  const id = nextPieceId++;
+  mesadaPiezas.push({id, largo:0, ancho:0});
+  renderMesadaPiezas();
+}
+
+function removeMesadaPieza(id) {
+  mesadaPiezas = mesadaPiezas.filter(p => p.id !== id);
+  renderMesadaPiezas();
+  recalc();
+}
+
+function renderMesadaPiezas() {
+  const cont = document.getElementById('mesada-piezas');
+  cont.innerHTML = '';
+  mesadaPiezas.forEach((p, i) => {
+    const area = (p.largo * p.ancho).toFixed(2);
+    cont.innerHTML += '<div class="piece-row">' +
+      '<span class="piece-label">#' + (i+1) + '</span>' +
+      '<input type="number" step="0.01" placeholder="Largo (m)" value="' + (p.largo||'') + '" onchange="updateMesada(' + p.id + ',\'largo\',this.value)"><span class="only-print unit-m">m</span>' +
+      '<span class="piece-label">x</span>' +
+      '<input type="number" step="0.01" placeholder="Ancho (m)" value="' + (p.ancho||'') + '" onchange="updateMesada(' + p.id + ',\'ancho\',this.value)"><span class="only-print unit-m">m</span>' +
+      '<span class="piece-result no-print">' + area + '</span>' +
+      '<button class="remove-btn" onclick="removeMesadaPieza(' + p.id + ')">×</button>' +
+      '</div>';
+  });
+}
+
+function updateMesada(id, field, val) {
+  const p = mesadaPiezas.find(x => x.id === id);
+  if (p) p[field] = parseFloat(val) || 0;
+  renderMesadaPiezas();
+  recalc();
+}
+
+function addZocaloPieza() {
+  const id = nextPieceId++;
+  zocaloPiezas.push({id, largo:0, alto:0});
+  renderZocaloPiezas();
+}
+
+function removeZocaloPieza(id) {
+  zocaloPiezas = zocaloPiezas.filter(p => p.id !== id);
+  renderZocaloPiezas();
+  recalc();
+}
+
+function renderZocaloPiezas() {
+  const cont = document.getElementById('zocalo-piezas');
+  cont.innerHTML = '';
+  zocaloPiezas.forEach((p, i) => {
+    const area = (p.largo * p.alto).toFixed(2);
+    cont.innerHTML += '<div class="piece-row">' +
+      '<span class="piece-label">#' + (i+1) + '</span>' +
+      '<input type="number" step="0.01" placeholder="Largo (m)" value="' + (p.largo||'') + '" onchange="updateZocalo(' + p.id + ',\'largo\',this.value)"><span class="only-print unit-m">m</span>' +
+      '<span class="piece-label">x</span>' +
+      '<input type="number" step="0.01" placeholder="Alto (m)" value="' + (p.alto||'') + '" onchange="updateZocalo(' + p.id + ',\'alto\',this.value)"><span class="only-print unit-m">m</span>' +
+      '<span class="piece-result no-print">' + area + '</span>' +
+      '<button class="remove-btn" onclick="removeZocaloPieza(' + p.id + ')">×</button>' +
+      '</div>';
+  });
+}
+
+function updateZocalo(id, field, val) {
+  const p = zocaloPiezas.find(x => x.id === id);
+  if (p) p[field] = parseFloat(val) || 0;
+  renderZocaloPiezas();
+  recalc();
+}
+
+function addItemFromSelect() {
+  const sel = document.getElementById('item-select');
+  const idx = sel.value;
+  if (idx === '') return;
+  const it = items[idx];
+  const id = nextPieceId++;
+  itemsPresupuesto.push({id, nombre: it.nombre, precio: it.precio, cantidad: 1});
+  renderItemsPresupuesto();
+  recalc();
+  sel.value = '';
+}
+
+function removeItemP(id) {
+  itemsPresupuesto = itemsPresupuesto.filter(p => p.id !== id);
+  renderItemsPresupuesto();
+  recalc();
+}
+
+function renderItemsPresupuesto() {
+  const cont = document.getElementById('items-adicionales');
+  cont.innerHTML = '';
+  itemsPresupuesto.forEach((it) => {
+    cont.innerHTML += '<div class="piece-row">' +
+      '<span style="flex:1;font-size:.9rem">' + it.nombre + '</span>' +
+      '<input type="number" step="1" min="1" value="' + it.cantidad + '" style="width:60px" onchange="updateItemP(' + it.id + ',\'cantidad\',this.value)">' +
+      '<span class="piece-label">x</span>' +
+      '<input type="number" step="0.01" value="' + it.precio + '" style="width:120px" onchange="updateItemP(' + it.id + ',\'precio\',this.value)">' +
+      '<span class="piece-result">' + fmt(it.precio * it.cantidad) + '</span>' +
+      '<button class="remove-btn" onclick="removeItemP(' + it.id + ')">×</button>' +
+      '</div>';
+  });
+}
+
+function updateItemP(id, field, val) {
+  const it = itemsPresupuesto.find(x => x.id === id);
+  if (it) it[field] = parseFloat(val) || 0;
+  renderItemsPresupuesto();
+  recalc();
+}
+
+function addCustomItem() {
+  const nombre = document.getElementById('custom-nombre').value.trim();
+  const precio = parseFloat(document.getElementById('custom-precio').value) || 0;
+  const cantidad = parseInt(document.getElementById('custom-cant').value) || 1;
+  if (!nombre) return alert('Ingrese un nombre para el item');
+  const id = nextPieceId++;
+  customItems.push({id, nombre, precio, cantidad});
+  renderCustomItems();
+  recalc();
+  document.getElementById('custom-nombre').value = '';
+  document.getElementById('custom-precio').value = '';
+  document.getElementById('custom-cant').value = '1';
+}
+
+function removeCustomItem(id) {
+  customItems = customItems.filter(p => p.id !== id);
+  renderCustomItems();
+  recalc();
+}
+
+function renderCustomItems() {
+  const cont = document.getElementById('items-custom');
+  cont.innerHTML = '';
+  customItems.forEach((it) => {
+    cont.innerHTML += '<div class="piece-row">' +
+      '<span style="flex:1;font-size:.9rem">' + it.nombre + '</span>' +
+      '<input type="number" step="1" min="1" value="' + it.cantidad + '" style="width:60px" onchange="updateCustom(' + it.id + ',\'cantidad\',this.value)">' +
+      '<span class="piece-label">x</span>' +
+      '<input type="number" step="0.01" value="' + it.precio + '" style="width:120px" onchange="updateCustom(' + it.id + ',\'precio\',this.value)">' +
+      '<span class="piece-result">' + fmt(it.precio * it.cantidad) + '</span>' +
+      '<button class="remove-btn" onclick="removeCustomItem(' + it.id + ')">×</button>' +
+      '</div>';
+  });
+}
+
+function updateCustom(id, field, val) {
+  const it = customItems.find(x => x.id === id);
+  if (it) it[field] = parseFloat(val) || 0;
+  renderCustomItems();
+  recalc();
+}
+
+function getPrecioARS() {
+  const precio = parseFloat(document.getElementById('precio-m2').value) || 0;
+  const moneda = document.getElementById('moneda-display').value;
+  if (moneda === 'USD') {
+    const tc = parseFloat(document.getElementById('tipo-cambio').value) || 0;
+    return precio * tc;
+  }
+  return precio;
+}
+
+function recalc() {
+  const precioARS = getPrecioARS();
+  const moneda = document.getElementById('moneda-display').value;
+  const precioOriginal = parseFloat(document.getElementById('precio-m2').value) || 0;
+  const tc = parseFloat(document.getElementById('tipo-cambio').value) || 0;
+
+  // Mesada m²
+  let totalM2 = 0;
+  mesadaPiezas.forEach(p => { totalM2 += p.largo * p.ancho; });
+  const costoMesada = totalM2 * precioARS;
+
+  // Zocalo: calculated as area (largo × alto) at the m² price
+  let zocaloM2 = 0;
+  zocaloPiezas.forEach(p => { zocaloM2 += p.largo * p.alto; });
+  const costoZocalo = zocaloM2 * precioARS;
+
+  // Items
+  let costoItems = 0;
+  itemsPresupuesto.forEach(it => { costoItems += it.precio * it.cantidad; });
+  customItems.forEach(it => { costoItems += it.precio * it.cantidad; });
+
+  const total = costoMesada + costoZocalo + costoItems;
+
+  // Render resumen
+  const lines = document.getElementById('resumen-lines');
+  let html = '';
+  html += '<div class="total-line"><span>Mesada</span><span>' + fmt(costoMesada) + '</span></div>';
+  if (zocaloM2 > 0) {
+    html += '<div class="total-line"><span>Zocalo</span><span>' + fmt(costoZocalo) + '</span></div>';
+  }
+
+  itemsPresupuesto.forEach(it => {
+    html += '<div class="total-line"><span>' + it.nombre + ' ×' + it.cantidad + '</span><span>' + fmt(it.precio * it.cantidad) + '</span></div>';
+  });
+  customItems.forEach(it => {
+    html += '<div class="total-line"><span>' + it.nombre + ' ×' + it.cantidad + '</span><span>' + fmt(it.precio * it.cantidad) + '</span></div>';
+  });
+
+  html += '<div class="total-line grand"><span>TOTAL</span><span>' + fmt(total) + '</span></div>';
+  lines.innerHTML = html;
+}
+
+// ========== SAVE / CLEAR / PRINT ==========
+function guardarPresupuesto() {
+  const cliente = document.getElementById('cliente-nombre').value.trim();
+  if (!cliente) return alert('Ingrese el nombre del cliente');
+  if (selectedMatIdx === null) return alert('Seleccione un material');
+  const mat = materiales[selectedMatIdx];
+  const precioM2 = parseFloat(document.getElementById('precio-m2').value) || 0;
+  const moneda = document.getElementById('moneda-display').value;
+  const tc = moneda === 'USD' ? (parseFloat(document.getElementById('tipo-cambio').value) || 0) : 1;
+  const precioARS = getPrecioARS();
+
+  let totalM2 = 0;
+  mesadaPiezas.forEach(p => { totalM2 += p.largo * p.ancho; });
+  const costoMesada = totalM2 * precioARS;
+
+  let zocaloM2 = 0;
+  zocaloPiezas.forEach(p => { zocaloM2 += p.largo * p.alto; });
+  const costoZocalo = zocaloM2 * precioARS;
+
+  let costoItems = 0;
+  const allItems = [...itemsPresupuesto, ...customItems];
+  allItems.forEach(it => { costoItems += it.precio * it.cantidad; });
+
+  const total = costoMesada + costoZocalo + costoItems;
+
+  const presupuesto = {
+    id: Date.now().toString(36) + Math.random().toString(36).substr(2,5),
+    fecha: new Date().toISOString(),
+    cliente,
+    realizadoPor: document.getElementById('realizado-por').value.trim(),
+    plazoEntrega: document.getElementById('plazo-entrega').value.trim(),
+    material: mat.nombre,
+    categoria: mat.cat,
+    precioM2,
+    moneda,
+    tipoCambio: tc,
+    precioARS_m2: precioARS,
+    mesadaPiezas: mesadaPiezas.map(p => ({largo:p.largo, ancho:p.ancho})),
+    zocaloPiezas: zocaloPiezas.map(p => ({largo:p.largo, alto:p.alto})),
+    items: allItems.map(it => ({nombre:it.nombre, precio:it.precio, cantidad:it.cantidad})),
+    totalM2,
+    zocaloM2,
+    costoMesada,
+    costoZocalo,
+    costoItems,
+    total
+  };
+
+  historial.push(presupuesto);
+  saveHistorial();
+  alert('Presupuesto guardado!\nTotal: ' + fmt(total));
+  limpiarPresupuesto();
+}
+
+function limpiarPresupuesto() {
+  document.getElementById('cliente-nombre').value = '';
+  document.getElementById('realizado-por').value = '';
+  document.getElementById('plazo-entrega').value = '';
+  document.getElementById('mat-search').value = '';
+  document.getElementById('material-idx').value = '';
+  selectedMatIdx = null;
+  document.getElementById('print-material').textContent = '';
+  document.getElementById('precio-m2').value = '';
+  document.getElementById('moneda-display').value = '';
+  document.getElementById('tc-box').classList.add('hidden');
+  mesadaPiezas = [];
+  zocaloPiezas = [];
+  itemsPresupuesto = [];
+  customItems = [];
+  renderMesadaPiezas();
+  renderZocaloPiezas();
+  renderItemsPresupuesto();
+  renderCustomItems();
+  recalc();
+}
+
+function getPrintTitle() {
+  const cliente = document.getElementById('cliente-nombre').value.trim() || 'Presupuesto';
+  const d = new Date();
+  const fecha = String(d.getDate()).padStart(2,'0') + '_' + String(d.getMonth()+1).padStart(2,'0') + '_' + d.getFullYear();
+  return cliente.replace(/\s+/g, '_') + '_' + fecha;
+}
+
+function imprimirPresupuesto() {
+  const orig = document.title;
+  document.title = getPrintTitle();
+  window.print();
+  document.title = orig;
+}
+
+function copiarPresupuesto() {
+  const cliente = document.getElementById('cliente-nombre').value.trim() || 'Sin nombre';
+  const matSearch = document.getElementById('mat-search').value || 'No seleccionado';
+  const precioARS = getPrecioARS();
+  const moneda = document.getElementById('moneda-display').value;
+  const precioOrig = parseFloat(document.getElementById('precio-m2').value) || 0;
+  const tc = parseFloat(document.getElementById('tipo-cambio').value) || 0;
+
+  const realizadoPor = document.getElementById('realizado-por').value.trim();
+  let text = '*PRESUPUESTO - MarmoCult*\n';
+  text += '📅 ' + new Date().toLocaleDateString('es-AR') + '\n';
+  text += '👤 Cliente: ' + cliente + '\n';
+  if (realizadoPor) text += '✏️ Realizado por: ' + realizadoPor + '\n';
+  const plazoEntrega = document.getElementById('plazo-entrega').value.trim();
+  if (plazoEntrega) text += '📦 Plazo de entrega: ' + plazoEntrega + '\n';
+  text += '🪨 Material: ' + matSearch + '\n\n';
+
+  if (mesadaPiezas.length) {
+    text += '*Mesada:*\n';
+    let totalM2 = 0;
+    mesadaPiezas.forEach((p, i) => {
+      totalM2 += p.largo * p.ancho;
+      text += '  ' + (i+1) + '. ' + p.largo + 'm × ' + p.ancho + 'm\n';
+    });
+    text += '  Subtotal: ' + fmt(totalM2 * precioARS) + '\n\n';
+  }
+
+  if (zocaloPiezas.length) {
+    text += '*Zocalo:*\n';
+    let zM2 = 0;
+    zocaloPiezas.forEach((p, i) => {
+      zM2 += p.largo * p.alto;
+      text += '  ' + (i+1) + '. ' + p.largo + 'm × ' + p.alto + 'm\n';
+    });
+    text += '  Subtotal: ' + fmt(zM2 * precioARS) + '\n\n';
+  }
+
+  const allIt = [...itemsPresupuesto, ...customItems];
+  if (allIt.length) {
+    text += '*Items:*\n';
+    allIt.forEach(it => {
+      text += '  • ' + it.nombre + (it.cantidad > 1 ? ' ×' + it.cantidad : '') + ': ' + fmt(it.precio * it.cantidad) + '\n';
+    });
+    text += '\n';
+  }
+
+  // Total
+  let totalM2 = 0; mesadaPiezas.forEach(p => totalM2 += p.largo * p.ancho);
+  let zM2 = 0; zocaloPiezas.forEach(p => zM2 += p.largo * p.alto);
+  let costoItems = 0; allIt.forEach(it => costoItems += it.precio * it.cantidad);
+  const total = (totalM2 + zM2) * precioARS + costoItems;
+  text += '*TOTAL: ' + fmt(total) + '*';
+
+  navigator.clipboard.writeText(text).then(() => {
+    alert('Presupuesto copiado al portapapeles!');
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    alert('Presupuesto copiado al portapapeles!');
+  });
+}
+
+// ========== PRECIOS ==========
+function renderPrecios() {
+  const cont = document.getElementById('precios-materiales');
+  let html = '';
+  let lastCat = '';
+  materiales.forEach((m, i) => {
+    if (m.cat !== lastCat) {
+      lastCat = m.cat;
+      html += '<div class="cat-header"><span>' + m.cat + '</span></div>';
+    }
+    const badge = m.moneda === 'USD' ? '<span class="badge badge-usd">USD</span>' : '<span class="badge badge-ars">ARS</span>';
+    html += '<div class="item-row">' +
+      '<span class="item-name">' + m.nombre + '</span>' +
+      '<span class="item-detail">' + m.espesor + '</span>' +
+      badge +
+      '<input type="number" class="price-input" step="0.01" value="' + m.precio + '" onchange="updateMatPrecio(' + i + ',this.value)">' +
+      '<button class="remove-btn btn-sm" style="margin-left:4px" onclick="removeMaterial(' + i + ')">×</button>' +
+      '</div>';
+  });
+  cont.innerHTML = html;
+
+  // Category dropdown - existing + option to type new
+  const catSel = document.getElementById('new-mat-cat');
+  const cats = [...new Set(materiales.map(m => m.cat))];
+  catSel.innerHTML = cats.map(c => '<option>' + c + '</option>').join('');
+
+  // Items
+  const icont = document.getElementById('precios-items');
+  html = '';
+  items.forEach((it, i) => {
+    html += '<div class="item-row">' +
+      '<span class="item-name">' + it.nombre + '</span>' +
+      '<input type="number" class="price-input" step="0.01" value="' + it.precio + '" onchange="updateItemPrecio(' + i + ',this.value)">' +
+      '<button class="remove-btn btn-sm" style="margin-left:4px" onclick="removeItem(' + i + ')">×</button>' +
+      '</div>';
+  });
+  icont.innerHTML = html;
+}
+
+function updateMatPrecio(i, val) {
+  materiales[i].precio = parseFloat(val) || 0;
+  savePrecios();
+}
+
+function removeMaterial(i) {
+  if (!confirm('Eliminar ' + materiales[i].nombre + '?')) return;
+  materiales.splice(i, 1);
+  savePrecios();
+  renderPrecios();
+}
+
+function addNewMaterial() {
+  // Use custom category if provided, else use dropdown
+  const customCat = document.getElementById('new-mat-cat-custom').value.trim();
+  const cat = customCat || document.getElementById('new-mat-cat').value;
+  const nombre = document.getElementById('new-mat-nombre').value.trim();
+  const espesor = document.getElementById('new-mat-espesor').value.trim();
+  const precio = parseFloat(document.getElementById('new-mat-precio').value) || 0;
+  const moneda = document.getElementById('new-mat-moneda').value;
+  if (!nombre) return alert('Ingrese un nombre');
+  if (!cat) return alert('Seleccione o escriba una categoria');
+  // Insert at end of category or at end if new category
+  let insertIdx = materiales.length;
+  for (let i = materiales.length - 1; i >= 0; i--) {
+    if (materiales[i].cat === cat) { insertIdx = i + 1; break; }
+  }
+  materiales.splice(insertIdx, 0, {cat, nombre: nombre.toUpperCase(), espesor, precio, moneda});
+  savePrecios();
+  renderPrecios();
+  document.getElementById('new-mat-nombre').value = '';
+  document.getElementById('new-mat-precio').value = '';
+  document.getElementById('new-mat-cat-custom').value = '';
+}
+
+function updateItemPrecio(i, val) {
+  items[i].precio = parseFloat(val) || 0;
+  savePrecios();
+  populateItemSelect();
+}
+
+function removeItem(i) {
+  if (!confirm('Eliminar ' + items[i].nombre + '?')) return;
+  items.splice(i, 1);
+  savePrecios();
+  renderPrecios();
+  populateItemSelect();
+}
+
+function addNewItem() {
+  const nombre = document.getElementById('new-item-nombre').value.trim();
+  const precio = parseFloat(document.getElementById('new-item-precio').value) || 0;
+  if (!nombre) return alert('Ingrese un nombre');
+  items.push({nombre, precio});
+  savePrecios();
+  renderPrecios();
+  populateItemSelect();
+  document.getElementById('new-item-nombre').value = '';
+  document.getElementById('new-item-precio').value = '';
+}
+
+// ========== EXPORT/IMPORT PRECIOS ==========
+function exportPrecios() {
+  const data = JSON.stringify({materiales, items}, null, 2);
+  downloadJSON(data, 'marmocult_precios_' + dateStr() + '.json');
+}
+
+function importPrecios(evt) {
+  const file = evt.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.materiales) {
+        data.materiales.forEach(nm => {
+          if (!materiales.find(m => m.nombre === nm.nombre && m.cat === nm.cat)) {
+            materiales.push(nm);
+          }
+        });
+      }
+      if (data.items) {
+        data.items.forEach(ni => {
+          if (!items.find(it => it.nombre === ni.nombre)) {
+            items.push(ni);
+          }
+        });
+      }
+      savePrecios();
+      renderPrecios();
+      populateItemSelect();
+      alert('Precios importados correctamente (merge)');
+    } catch(err) {
+      alert('Error al importar: ' + err.message);
+    }
+    evt.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ========== HISTORIAL ==========
+function renderHistorial() {
+  const body = document.getElementById('historial-body');
+  const empty = document.getElementById('historial-empty');
+
+  if (historial.length === 0) {
+    body.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  const sorted = [...historial].sort((a, b) => {
+    if (sortField === 'fecha') return sortDir * (new Date(a.fecha) - new Date(b.fecha));
+    if (sortField === 'cliente') return sortDir * a.cliente.localeCompare(b.cliente);
+    if (sortField === 'total') return sortDir * (a.total - b.total);
+    return 0;
+  });
+
+  body.innerHTML = sorted.map(p => {
+    const fecha = new Date(p.fecha).toLocaleDateString('es-AR');
+    return '<tr>' +
+      '<td>' + fecha + '</td>' +
+      '<td>' + p.cliente + '</td>' +
+      '<td>' + p.material + ' <span class="badge ' + (p.moneda==='USD'?'badge-usd':'badge-ars') + '">' + p.moneda + '</span></td>' +
+      '<td><strong>' + fmt(p.total) + '</strong></td>' +
+      '<td>' +
+        '<button class="btn btn-outline btn-sm" onclick="verDetalle(\'' + p.id + '\')">Ver</button> ' +
+        '<button class="btn btn-outline btn-sm" onclick="copiarHistorial(\'' + p.id + '\')">Copiar</button> ' +
+        '<button class="btn btn-outline btn-sm" onclick="imprimirHistorial(\'' + p.id + '\')">Imprimir</button> ' +
+        '<button class="btn btn-danger btn-sm" onclick="eliminarPresupuesto(\'' + p.id + '\')">×</button>' +
+      '</td>' +
+      '</tr>';
+  }).join('');
+}
+
+function sortHistorial(field) {
+  if (sortField === field) sortDir *= -1;
+  else { sortField = field; sortDir = -1; }
+  renderHistorial();
+}
+
+function verDetalle(id) {
+  const p = historial.find(x => x.id === id);
+  if (!p) return;
+  const fecha = new Date(p.fecha).toLocaleDateString('es-AR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+
+  let html = '<div class="modal-overlay" onclick="if(event.target===this)closeModal()">' +
+    '<div class="modal">' +
+    '<button class="modal-close" onclick="closeModal()">×</button>' +
+    '<h2>Presupuesto - ' + p.cliente + '</h2>' +
+    '<p style="color:var(--text4);margin-bottom:12px">' + fecha + (p.realizadoPor ? ' | Realizado por: ' + p.realizadoPor : '') + (p.plazoEntrega ? ' | Plazo: ' + p.plazoEntrega : '') + '</p>' +
+    '<table>' +
+    '<tr><td><strong>Material</strong></td><td>' + p.material + ' (' + p.categoria + ')</td></tr>' +
+    '</table>' +
+    '<h3 style="margin:12px 0 8px;color:var(--accent)">Piezas de Mesada</h3><table><thead><tr><th>#</th><th>Largo</th><th>Ancho</th></tr></thead><tbody>';
+
+  p.mesadaPiezas.forEach((mp, i) => {
+    html += '<tr><td>' + (i+1) + '</td><td>' + mp.largo + ' m</td><td>' + mp.ancho + ' m</td></tr>';
+  });
+  html += '</tbody></table>';
+
+  if (p.zocaloPiezas && p.zocaloPiezas.length) {
+    html += '<h3 style="margin:12px 0 8px;color:var(--accent)">Piezas de Zocalo</h3><table><thead><tr><th>#</th><th>Largo</th><th>Alto</th></tr></thead><tbody>';
+    p.zocaloPiezas.forEach((zp, i) => {
+      html += '<tr><td>' + (i+1) + '</td><td>' + zp.largo + ' m</td><td>' + zp.alto + ' m</td></tr>';
+    });
+    html += '</tbody></table>';
+  }
+
+  if (p.items && p.items.length) {
+    html += '<h3 style="margin:12px 0 8px;color:var(--accent)">Items</h3><table><thead><tr><th>Item</th><th>Cant.</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>';
+    p.items.forEach(it => {
+      html += '<tr><td>' + it.nombre + '</td><td>' + it.cantidad + '</td><td>' + fmt(it.precio) + '</td><td>' + fmt(it.precio*it.cantidad) + '</td></tr>';
+    });
+    html += '</tbody></table>';
+  }
+
+  html += '<div class="total-box" style="margin-top:16px">' +
+    '<div class="total-line"><span>Mesada</span><span>' + fmt(p.costoMesada) + '</span></div>' +
+    '<div class="total-line"><span>Zocalo</span><span>' + fmt(p.costoZocalo) + '</span></div>' +
+    '<div class="total-line"><span>Items</span><span>' + fmt(p.costoItems) + '</span></div>' +
+    '<div class="total-line grand"><span>TOTAL</span><span>' + fmt(p.total) + '</span></div>' +
+    '</div>' +
+    '</div></div>';
+
+  document.getElementById('modal-container').innerHTML = html;
+}
+
+function buildPresupuestoText(p) {
+  const fecha = new Date(p.fecha).toLocaleDateString('es-AR');
+  let text = '*PRESUPUESTO - MarmoCult*\n';
+  text += '📅 ' + fecha + '\n';
+  text += '👤 Cliente: ' + p.cliente + '\n';
+  if (p.realizadoPor) text += '✏️ Realizado por: ' + p.realizadoPor + '\n';
+  if (p.plazoEntrega) text += '📦 Plazo de entrega: ' + p.plazoEntrega + '\n';
+  text += '🪨 Material: ' + p.material + ' (' + p.categoria + ')\n\n';
+  if (p.mesadaPiezas && p.mesadaPiezas.length) {
+    text += '*Mesada:*\n';
+    p.mesadaPiezas.forEach((mp, i) => {
+      text += '  ' + (i+1) + '. ' + mp.largo + 'm × ' + mp.ancho + 'm\n';
+    });
+    text += '  Subtotal: ' + fmt(p.costoMesada) + '\n\n';
+  }
+  if (p.zocaloPiezas && p.zocaloPiezas.length) {
+    text += '*Zocalo:*\n';
+    p.zocaloPiezas.forEach((zp, i) => {
+      text += '  ' + (i+1) + '. ' + zp.largo + 'm × ' + zp.alto + 'm\n';
+    });
+    text += '  Subtotal: ' + fmt(p.costoZocalo) + '\n\n';
+  }
+  if (p.items && p.items.length) {
+    text += '*Items:*\n';
+    p.items.forEach(it => {
+      text += '  • ' + it.nombre + (it.cantidad > 1 ? ' ×' + it.cantidad : '') + ': ' + fmt(it.precio * it.cantidad) + '\n';
+    });
+    text += '\n';
+  }
+  text += '*TOTAL: ' + fmt(p.total) + '*';
+  return text;
+}
+
+function copiarHistorial(id) {
+  const p = historial.find(x => x.id === id);
+  if (!p) return;
+  const text = buildPresupuestoText(p);
+  navigator.clipboard.writeText(text).then(() => {
+    alert('Presupuesto copiado al portapapeles!');
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    alert('Presupuesto copiado al portapapeles!');
+  });
+}
+
+function imprimirHistorial(id) {
+  const p = historial.find(x => x.id === id);
+  if (!p) return;
+  verDetalle(id);
+  const d = new Date(p.fecha);
+  const fecha = String(d.getDate()).padStart(2,'0') + '_' + String(d.getMonth()+1).padStart(2,'0') + '_' + d.getFullYear();
+  const orig = document.title;
+  document.title = p.cliente.replace(/\s+/g, '_') + '_' + fecha;
+  setTimeout(() => { window.print(); document.title = orig; }, 300);
+}
+
+function closeModal() {
+  document.getElementById('modal-container').innerHTML = '';
+}
+
+function eliminarPresupuesto(id) {
+  if (!confirm('Eliminar este presupuesto?')) return;
+  historial = historial.filter(p => p.id !== id);
+  saveHistorial();
+  renderHistorial();
+}
+
+// ========== EXPORT/IMPORT HISTORIAL ==========
+function exportHistorial(tipo) {
+  if (tipo === 'rango') {
+    document.getElementById('rango-export').classList.toggle('hidden');
+    return;
+  }
+
+  const now = new Date();
+  let filtered;
+
+  if (tipo === 'mes') {
+    filtered = historial.filter(p => {
+      const d = new Date(p.fecha);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+  } else if (tipo === 'anio') {
+    filtered = historial.filter(p => new Date(p.fecha).getFullYear() === now.getFullYear());
+  }
+
+  if (!filtered || filtered.length === 0) return alert('No hay presupuestos en el periodo seleccionado');
+  const name = tipo === 'mes' ? 'mes_' + (now.getMonth()+1) + '_' + now.getFullYear() : 'anio_' + now.getFullYear();
+  downloadJSON(JSON.stringify(filtered, null, 2), 'marmocult_historial_' + name + '.json');
+}
+
+function doExportRango() {
+  const desde = document.getElementById('rango-desde').value;
+  const hasta = document.getElementById('rango-hasta').value;
+  if (!desde || !hasta) return alert('Seleccione ambas fechas');
+  const dDesde = new Date(desde + '-01');
+  const dHasta = new Date(hasta + '-01');
+  dHasta.setMonth(dHasta.getMonth() + 1);
+
+  const filtered = historial.filter(p => {
+    const d = new Date(p.fecha);
+    return d >= dDesde && d < dHasta;
+  });
+
+  if (filtered.length === 0) return alert('No hay presupuestos en el rango seleccionado');
+  downloadJSON(JSON.stringify(filtered, null, 2), 'marmocult_historial_' + desde + '_a_' + hasta + '.json');
+  document.getElementById('rango-export').classList.add('hidden');
+}
+
+function importHistorial(evt) {
+  const file = evt.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!Array.isArray(data)) throw new Error('El archivo debe contener un array de presupuestos');
+      let added = 0;
+      data.forEach(p => {
+        if (!historial.find(h => h.id === p.id)) {
+          historial.push(p);
+          added++;
+        }
+      });
+      saveHistorial();
+      renderHistorial();
+      alert('Importados ' + added + ' presupuestos nuevos (' + (data.length - added) + ' duplicados omitidos)');
+    } catch(err) {
+      alert('Error al importar: ' + err.message);
+    }
+    evt.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ========== UTILS ==========
+function downloadJSON(data, filename) {
+  const blob = new Blob([data], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function dateStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+// ========== INIT ==========
+loadData();
+populateItemSelect();
+recalc();
+</script>
+</body>
+</html>
