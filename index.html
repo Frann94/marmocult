@@ -115,8 +115,24 @@ tr:hover{background:var(--bg4)}
   .print-condiciones p{margin-bottom:2px}
   .print-contacto{display:block!important;text-align:center;margin-top:6px;padding:6px;border-top:2px solid #E8992C;font-size:.8rem;color:#555}
   .print-contacto strong{color:#E8992C}
+  body.multi-print > .header,body.multi-print .tabs,body.multi-print #tab-presupuesto,body.multi-print #tab-precios,body.multi-print #tab-historial{display:none!important}
+  .plazo-wrap input{display:none!important}
+  .plazo-wrap .plazo-text{display:inline!important;font-weight:600}
+  .plazo-field{display:flex!important;align-items:baseline;gap:6px}
+  .plazo-field label{margin-bottom:0!important}
+  body.multi-print #print-multi{display:block!important}
+  #print-multi .print-page{page-break-after:always}
+  #print-multi .print-page:last-child{page-break-after:auto}
   @page{size:A4;margin:8mm}
 }
+#print-multi{display:none}
+.mat-chip{display:inline-flex;align-items:center;gap:6px;background:var(--accent-light);color:var(--accent);border:1px solid var(--accent);border-radius:14px;padding:4px 10px;font-size:.85rem}
+.mat-chip button{background:none;border:none;color:var(--accent);cursor:pointer;font-size:1rem;line-height:1;padding:0}
+.drag-handle{cursor:grab;color:var(--text4);user-select:none;padding:0 4px;font-size:1rem}
+.drag-handle:active{cursor:grabbing}
+.item-row.dragging{opacity:.4}
+.item-row.drag-over-top{border-top:2px solid var(--accent)!important}
+.item-row.drag-over-bottom{border-bottom:2px solid var(--accent)!important}
 </style>
 </head>
 <body>
@@ -150,9 +166,13 @@ tr:hover{background:var(--bg4)}
       </div>
     </div>
     <div class="row">
-      <div>
-        <label>Plazo de entrega</label>
-        <input type="text" id="plazo-entrega" placeholder="Ej: 15 dias habiles">
+      <div class="plazo-field">
+        <label>Plazo de entrega:</label>
+        <div class="plazo-wrap" style="display:flex;align-items:center;gap:4px">
+          <input type="text" id="plazo-entrega" placeholder="Ej: 15" style="margin-bottom:0" oninput="document.getElementById('plazo-text').textContent=this.value">
+          <span class="plazo-text only-print" id="plazo-text"></span>
+          <span class="only-print" style="white-space:nowrap">días</span>
+        </div>
       </div>
       <div></div>
     </div>
@@ -180,6 +200,11 @@ tr:hover{background:var(--bg4)}
     <div id="tc-box" class="currency-box hidden">
       <label>Tipo de Cambio (1 USD = ? ARS)</label>
       <input type="number" id="tipo-cambio" step="0.01" value="1435" onchange="recalc()">
+    </div>
+    <div class="print-hide" style="margin-top:10px">
+      <button class="btn btn-outline btn-sm" onclick="agregarMaterialExtra()">+ Agregar material adicional</button>
+      <div id="materiales-extra-list" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px"></div>
+      <small style="color:var(--text4);display:block;margin-top:6px">Si hay más de un material, al imprimir se generará una hoja por cada uno.</small>
     </div>
   </div>
 
@@ -210,11 +235,12 @@ tr:hover{background:var(--bg4)}
   <div class="card">
     <h2>Otros Adicionales</h2>
     <div id="items-custom"></div>
-    <div class="row" style="align-items:end">
-      <div><label>Nombre</label><input type="text" id="custom-nombre" placeholder="Ej: Bacha E60" style="margin-bottom:0"></div>
-      <div><label>Precio ($)</label><input type="number" id="custom-precio" step="0.01" style="margin-bottom:0"></div>
-      <div><label>Cant.</label><input type="number" id="custom-cant" value="1" min="1" style="margin-bottom:0"></div>
-      <div style="flex:0"><button class="btn btn-outline btn-sm" onclick="addCustomItem()">+</button></div>
+    <div style="margin-top:8px">
+      <label>Agregar item predefinido</label>
+      <select id="otro-select">
+        <option value="">-- Seleccionar item --</option>
+      </select>
+      <button class="btn btn-outline btn-sm" style="margin-top:4px" onclick="addOtroFromSelect()">+ Agregar Item</button>
     </div>
   </div>
 
@@ -275,6 +301,16 @@ tr:hover{background:var(--bg4)}
     </div>
   </div>
 
+  <div class="card">
+    <h2>Otros Adicionales (Precios)</h2>
+    <div id="precios-otros"></div>
+    <div class="row" style="margin-top:12px;align-items:end">
+      <div><label>Nombre</label><input type="text" id="new-otro-nombre" style="margin-bottom:0"></div>
+      <div><label>Precio ($)</label><input type="number" id="new-otro-precio" step="0.01" style="margin-bottom:0"></div>
+      <div style="flex:0"><button class="btn btn-primary btn-sm" onclick="addNewOtro()">+</button></div>
+    </div>
+  </div>
+
   <div class="btn-group">
     <button class="btn btn-outline" onclick="exportPrecios()">Exportar Precios (JSON)</button>
     <button class="btn btn-outline" onclick="document.getElementById('import-precios-file').click()">Importar Precios (JSON)</button>
@@ -319,20 +355,22 @@ tr:hover{background:var(--bg4)}
 </div>
 
 <div id="modal-container"></div>
+<div id="print-multi"></div>
 
 <script>
 // ========== DATA ==========
+const MAT_VERSION = 2;
 const DEFAULT_MATERIALES = [
   {cat:"Granitos Nacionales",nombre:"ROSA DEL SALTO",espesor:"2 CM",precio:195200,moneda:"ARS"},
   {cat:"Granitos Nacionales",nombre:"ORCOLLANO",espesor:"2 CM",precio:195200,moneda:"ARS"},
   {cat:"Granitos Nacionales",nombre:"GRIS PERLA",espesor:"2 CM",precio:232000,moneda:"ARS"},
   {cat:"Granitos Nacionales",nombre:"GRIS MARA",espesor:"2 CM",precio:244800,moneda:"ARS"},
   {cat:"Granitos Nacionales",nombre:"BLACK COSMIC",espesor:"2 CM",precio:265600,moneda:"ARS"},
-  {cat:"Granitos Nacionales",nombre:"NEGRO BROREAL",espesor:"2 CM",precio:267200,moneda:"ARS"},
+  {cat:"Granitos Nacionales",nombre:"NEGRO BOREAL",espesor:"2 CM",precio:267200,moneda:"ARS"},
   {cat:"Granitos Nacionales",nombre:"GRIS PERLA LEATHER",espesor:"2 CM",precio:253500,moneda:"ARS"},
   {cat:"Granitos Nacionales",nombre:"GRIS MARA LEATHER",espesor:"2 CM",precio:270400,moneda:"ARS"},
   {cat:"Granitos Nacionales",nombre:"BLACK COSMIC LEATHER",espesor:"2 CM",precio:292200,moneda:"ARS"},
-  {cat:"Granitos Nacionales",nombre:"NEGRO BROREAL LEATHER",espesor:"2 CM",precio:294400,moneda:"ARS"},
+  {cat:"Granitos Nacionales",nombre:"NEGRO BOREAL LEATHER",espesor:"2 CM",precio:294400,moneda:"ARS"},
   {cat:"Granitos Nacionales",nombre:"AMADEUS LEATHER",espesor:"2 CM",precio:307200,moneda:"ARS"},
   {cat:"Granitos Importados",nombre:"NEGRO BRASIL",espesor:"2 CM",precio:320,moneda:"USD"},
   {cat:"Granitos Importados",nombre:"EBONY CRISTAL",espesor:"2 CM",precio:355,moneda:"USD"},
@@ -342,50 +380,53 @@ const DEFAULT_MATERIALES = [
   {cat:"Marmoles Importados",nombre:"BLANCO TURCO",espesor:"2 CM",precio:435,moneda:"USD"},
   {cat:"Marmoles Importados",nombre:"CARRARA C / D",espesor:"2 CM",precio:435,moneda:"USD"},
   {cat:"Marmoles Importados",nombre:"NEW BEIGE",espesor:"2 CM",precio:435,moneda:"USD"},
-  {cat:"Marmoles Importados",nombre:"MOONBEIGE",espesor:"2 CM",precio:545,moneda:"USD"},
+  {cat:"Marmoles Importados",nombre:"MOON BEIGE",espesor:"2 CM",precio:545,moneda:"USD"},
   {cat:"Marmoles Importados",nombre:"TUNDRA GREY",espesor:"2 CM",precio:545,moneda:"USD"},
   {cat:"Marmoles Importados",nombre:"MARRON BOSQUE",espesor:"2 CM",precio:640,moneda:"USD"},
-  {cat:"Marmoles Importados",nombre:"NEGRO MARQUINA",espesor:"2 CM",precio:960,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"ABSOLUTE BLACK - M",espesor:"12 MM",precio:490,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"AURORA - M VETA PASANTE",espesor:"12 MM",precio:490,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"BIANCO LASA - M",espesor:"12 MM",precio:490,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"CALACATTA ANTICO - M",espesor:"12 MM",precio:490,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"CALACATTA BORGHINI - 3D",espesor:"12 MM",precio:490,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"CEPPO DI GRE - M",espesor:"12 MM",precio:490,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"CORALINA - 3D",espesor:"12 MM",precio:490,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"DAZZLE - M",espesor:"12 MM",precio:490,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"IVORY DESERT - M",espesor:"12 MM",precio:490,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"LIMESTONE - M",espesor:"12 MM",precio:490,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"METRO CREAM - M",espesor:"12 MM",precio:490,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"METRO GREY - M",espesor:"12 MM",precio:490,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"ARIA 25 - P / M",espesor:"12 MM",precio:615,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"BLANCO ZEN - P / M",espesor:"12 MM",precio:615,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"BRONZE ARMANI - M",espesor:"12 MM",precio:615,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"DESERT BLACK - M",espesor:"12 MM",precio:615,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"FIOR DI BOSCO - M",espesor:"12 MM",precio:615,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"NEGRO MARQUINA - P",espesor:"12 MM",precio:615,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"ONYX BLACK - M",espesor:"12 MM",precio:615,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"ONYX WHITE - 3D",espesor:"12 MM",precio:615,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"PATAGONIA GOLD - P / M",espesor:"12 MM",precio:615,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"SUMMER CALM - M",espesor:"12 MM",precio:615,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"TITANIUM BLACK - M",espesor:"12 MM",precio:615,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"TRAVERTINO NAVONA - 3D",espesor:"12 MM",precio:615,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"TUNDRA DARK - M",espesor:"12 MM",precio:615,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"ALPINUS WHITE - 3D",espesor:"12 MM",precio:705,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"BRESCIA IMPERIALE - 3D",espesor:"12 MM",precio:705,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"CALACATTA VAGLI - P",espesor:"12 MM",precio:705,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"GRIS MANHATAN - M",espesor:"12 MM",precio:705,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"MACCIA VECCIA - P / M",espesor:"12 MM",precio:705,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"ORA GOLD - P / M",espesor:"12 MM",precio:705,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"TAJ MAHAL - M",espesor:"12 MM",precio:705,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"TOSCANA VENA - 3D",espesor:"12 MM",precio:705,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"VERDE SELVA - 3C",espesor:"12 MM",precio:705,moneda:"USD"},
-  {cat:"Pura Stone Prima",nombre:"VENA ORO - 3D",espesor:"12 MM",precio:705,moneda:"USD"},
+  {cat:"Purastone",nombre:"BLANCO CANA",espesor:"2 CM",precio:385,moneda:"USD"},
+  {cat:"Purastone",nombre:"BLANCO PALOMA",espesor:"2 CM",precio:415,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"ABSOLUTE BLACK - M",espesor:"12 MM",precio:530,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"AURORA - M VETA PASANTE",espesor:"12 MM",precio:530,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"CORALINA - 3D",espesor:"12 MM",precio:530,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"GRIS MANHATTAN - M",espesor:"12 MM",precio:530,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"IVORY DESERT - M",espesor:"12 MM",precio:530,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"METRO CREAM - M",espesor:"12 MM",precio:530,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"METRO GREY - M",espesor:"12 MM",precio:530,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"TOSCANA VENA - 3D",espesor:"12 MM",precio:530,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"TUNDRA DARK - M",espesor:"12 MM",precio:530,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"ARIA 25 - P / M",espesor:"12 MM",precio:530,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"BIANCO LASA - M",espesor:"12 MM",precio:530,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"BLANCO ZEN - P / M",espesor:"12 MM",precio:530,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"CALACATTA ANTICO - M",espesor:"12 MM",precio:530,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"CALACATTA BORGHINI - 3D",espesor:"12 MM",precio:530,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"CEPPO DI GRE - M",espesor:"12 MM",precio:530,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"DAZZLE - M",espesor:"12 MM",precio:530,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"DESERT BLACK - M",espesor:"12 MM",precio:530,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"LIMESTONE - M",espesor:"12 MM",precio:530,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"SUMMER CALM - M",espesor:"12 MM",precio:530,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"TITANIUM BLACK - M",espesor:"12 MM",precio:530,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"TRAVERTINO NAVONA - 3D",espesor:"12 MM",precio:530,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"BRONZE ARMANI - M",espesor:"12 MM",precio:610,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"FIOR DI BOSCO - M",espesor:"12 MM",precio:610,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"MARQUINA - P",espesor:"12 MM",precio:610,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"ONYX BLACK - M",espesor:"12 MM",precio:610,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"ONYX WHITE - 3D",espesor:"12 MM",precio:610,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"PATAGONIA GOLD - P / M",espesor:"12 MM",precio:610,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"MACCHIA VECCHIA - P / M",espesor:"12 MM",precio:610,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"ORA GOLD - P / M",espesor:"12 MM",precio:610,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"TAJ MAHAL - M",espesor:"12 MM",precio:610,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"VERDE SELVA - 3 C",espesor:"12 MM",precio:610,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"VENA ORO - 3D",espesor:"12 MM",precio:610,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"ALPINUS WHITE - 3D",espesor:"12 MM",precio:610,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"BRESCIA IMPERIALE - 3D",espesor:"12 MM",precio:610,moneda:"USD"},
+  {cat:"Pura Stone Prima",nombre:"CALACATTA VAGLI - P",espesor:"12 MM",precio:610,moneda:"USD"},
 ];
 
 const DEFAULT_ITEMS = [
-  {nombre:"Trasforo bacha o anafe",precio:72000},
-  {nombre:"Trasforo griferia / llave de gas",precio:19200},
+  {nombre:"Trasforo bacha",precio:72000},
+  {nombre:"Trasforo anafe",precio:72000},
+  {nombre:"Trasforo griferia",precio:19200},
+  {nombre:"Trasforo llave de gas",precio:19200},
   {nombre:"Trasforo bacha de apoyo baño",precio:40000},
   {nombre:"Trasforo de caja de luz en revestimiento",precio:19200},
   {nombre:"Armado de pata",precio:96000},
@@ -397,9 +438,110 @@ const DEFAULT_ITEMS = [
   {nombre:"Metro lineal de corte especial o circular",precio:72000},
 ];
 
+const DEFAULT_OTROS = [
+  {nombre:"LAVADERO LN 50 (50 x 40 x 25)",precio:199900},
+  {nombre:"SIMPLE SIGNATURE ENKEL SE 45 (45 x 42 x 22)",precio:602400},
+  {nombre:"SIMPLE SIGNATURE ENKEL SE 45 GB (45 x 42 x 22)",precio:915000},
+  {nombre:"SIMPLE SIGNATURE ENKEL SE 45 RG (45 x 42 x 22)",precio:996100},
+  {nombre:"SIMPLE SIGNATURE ENKEL SE 55 (55 x 42 x 22)",precio:726800},
+  {nombre:"SIMPLE SIGNATURE ENKEL SE 55 GB (55 x 42 x 22)",precio:1138500},
+  {nombre:"SIMPLE SIGNATURE ENKEL SE 55 RG (55 x 42 x 22)",precio:1244300},
+  {nombre:"SIMPLE SIGNATURE ENKEL SE 75 (75 x 42 x 22)",precio:941100},
+  {nombre:"SIMPLE SIGNATURE ENKEL SE 75 GB (75 x 42 x 22)",precio:1516600},
+  {nombre:"SIMPLE SIGNATURE ENKEL SE 75 RG (75 x 42 x 22)",precio:1626100},
+  {nombre:"SIMPLE LUXOR SI85 A (85,5 x 48,2 x 21)",precio:356800},
+  {nombre:"SIMPLE LUXOR SI85 ST (85,5 x 48,2 x 21)",precio:356800},
+  {nombre:"SIMPLE LUXOR COMPACT SI71 A (71 x 48,2 x 21)",precio:327400},
+  {nombre:"SIMPLE LUXOR COMPACT SI71 ST (71 x 48,2 x 21)",precio:327400},
+  {nombre:"SIMPLE LUXOR MINI SI55 A (55 x 41,5 x 20)",precio:258400},
+  {nombre:"SIMPLE QUADRA MAX Q71 A (71 x 48,2 x 20)",precio:419700},
+  {nombre:"SIMPLE QUADRA MINI Q55 A (48,5 x 55,5 x 19)",precio:337600},
+  {nombre:"SIMPLE CURVE SI77 A (77 x 43 x 20)",precio:306000},
+  {nombre:"SIMPLE E 28 (34 x 28,5 x 15)",precio:89200},
+  {nombre:"SIMPLE E 37 (37 x 34 x 15)",precio:101400},
+  {nombre:"SIMPLE E 37/18 (37 x 34 x 18)",precio:114800},
+  {nombre:"SIMPLE E 44 (44 x 34 x 15)",precio:116500},
+  {nombre:"SIMPLE E 44/18 (44 x 34 x 18)",precio:137000},
+  {nombre:"SIMPLE E 50/18 (50 x 40 x 18)",precio:156900},
+  {nombre:"SIMPLE E 54 (54 x 36 x 24)",precio:222600},
+  {nombre:"SIMPLE E 60 (60 x 37 x 20)",precio:249700},
+  {nombre:"SIMPLE E 60 A (68,3 x 44,5 x 20)",precio:342500},
+  {nombre:"SIMPLE G 50 (50 x 40 x 26)",precio:235600},
+  {nombre:"SIMPLE QUADRA Q 37 (37 x 34 x 17,5)",precio:118700},
+  {nombre:"SIMPLE QUADRA Q 40 (40 x 34 x 17,5)",precio:190200},
+  {nombre:"SIMPLE T 34 (34 x 23,5 x 14)",precio:83100},
+  {nombre:"SIMPLE T 34/18 (34 x 23,5 x 18)",precio:100500},
+  {nombre:"SIMPLE Z 52 (52 x 32 x 15)",precio:110000},
+  {nombre:"SIMPLE Z 52/18 (52 x 32 x 18)",precio:126300},
+  {nombre:"SIMPLE ZN 52/18 A (57,8 x 37,8 x 18)",precio:197400},
+  {nombre:"SIMPLE O 37 A (37 x 20)",precio:161800},
+  {nombre:"SIMPLE O 37 AT (37 x 20)",precio:133700},
+  {nombre:"SIMPLE ON 30 A (30 x 14)",precio:117400},
+  {nombre:"DOBLE QUADRA Q 084 A (83,8 x 55,9 x 17,5)",precio:586000},
+  {nombre:"DOBLE QUADRA Q 085 A (85,5 x 48,2 x 17,5)",precio:562100},
+  {nombre:"DOBLE QUADRA Q 76 (70,8 x 37 x 17,5)",precio:413900},
+  {nombre:"DOBLE QUADRA Q 76 A (77,5 x 43,5 x 17,5)",precio:457400},
+  {nombre:"DOBLE ZARA D 84 A (83,5 x 47 x 18)",precio:521500},
+  {nombre:"DOBLE C 28 (59,8 x 34 x 15)",precio:182600},
+  {nombre:"DOBLE C 28/18 (59,8 x 34 x 18)",precio:197700},
+  {nombre:"DOBLE C 37 (70,8 x 37 x 15)",precio:200000},
+  {nombre:"DOBLE C 37/18 (70,8 x 37 x 18)",precio:228500},
+  {nombre:"DOBLE R 37 (63,3 x 34 x 15)",precio:185300},
+  {nombre:"DOBLE R 37/18 (63,3 x 34 x 18)",precio:215900},
+  {nombre:"DOBLE R 63 (63,8 x 37 x 15)",precio:191600},
+  {nombre:"DOBLE R 63/18 (63,8 x 37 x 18)",precio:245400},
+  {nombre:"DOBLE R 63/18 F (70,5 x 43,5 x 18,5)",precio:259500},
+  {nombre:"ESQUINERA X 28 (61,5 x 61,5 x 15)",precio:411300},
+  {nombre:"ESQUINERA AXA D 78 A (78 x 78 x 18)",precio:583200},
+  {nombre:"TRIPLE HYDRA J 107 A (1,07 x 43,5 x 18)",precio:760900},
+  {nombre:"VANITORY SIGN. AURA 38 ROSE GOLD (38 dm x 11)",precio:1153500},
+  {nombre:"VANITORY SIGN. AXIS 55 GUN BLACK (55 x 38 x 10)",precio:1256000},
+  {nombre:"VANITORY BA 340 L (34 dm x 14)",precio:111700},
+  {nombre:"VANITORY O 250 L (25 dm x 12)",precio:71400},
+  {nombre:"VANITORY O 300 L (30 dm x 13,5)",precio:91300},
+  {nombre:"VANITORY O 340 L (34 dm x 14)",precio:106500},
+  {nombre:"VANITORY OV 330 L (33 x 24 x 12)",precio:75800},
+  {nombre:"VANITORY OV 370 L (37 x 26,5 x 12)",precio:94200},
+  {nombre:"VANITORY OV 440 L (44 x 27,5 x 13)",precio:106200},
+  {nombre:"VANITORY DANNA (56 x 35 x 14)",precio:136400},
+  {nombre:"APIDO - DOSIFICADOR",precio:36300},
+  {nombre:"APIDOCU - DOSIFICADOR CUBO",precio:60200},
+  {nombre:"APIDOB - DOSIFICADOR BLACK",precio:45200},
+  {nombre:"BARE E44 - BANDEJA REJILLA ACERO INOX",precio:81900},
+  {nombre:"CUCE - CUBRE CESTILLO",precio:6400},
+  {nombre:"CAAC E37 - CANASTO E 37 ACERO INOX",precio:101500},
+  {nombre:"CASELU - CANASTO SECAPLATOS LUXOR",precio:108000},
+  {nombre:"CASELM - CANASTO SECAPLATOS LUXOR MINI",precio:92600},
+  {nombre:"ESAC E3 - ESCURREPLATOS ACERO INOX",precio:70000},
+  {nombre:"ESAC E4 - ESCURREPLATOS ACERO INOX",precio:69200},
+  {nombre:"ESAC Q40 - ESCURREPLATOS ACERO INOX",precio:105400},
+  {nombre:"ESAC Q37 - ESCURREPLATOS ACERO INOX",precio:104500},
+  {nombre:"ESAC Q71 - ESCURREPLATOS Q71 ACERO INOX",precio:109600},
+  {nombre:"ESAC CV - ESCURREPLATOS CURVE ACERO INOX",precio:80000},
+  {nombre:"PIAC Q71 - PILETA QUADRA Q71 (ABS) BLANCO",precio:87200},
+  {nombre:"PIAC Q71N - PILETA QUADRA Q71 (ABS) NEGRO",precio:99300},
+  {nombre:"PIACLU - PILETA LUXOR (ABS) BLANCO",precio:121200},
+  {nombre:"PIACLUN - PILETA LUXOR (ABS) NEGRO",precio:126100},
+  {nombre:"RERX3242 - REJILLA ENROLLABLE RECT 32X42",precio:50200},
+  {nombre:"RERX3246 - REJILLA ENROLLABLE RECT 32X46",precio:53600},
+  {nombre:"TA 34 - TABLA PICAR MADERA",precio:69200},
+  {nombre:"TA 37 - TABLA PICAR MADERA",precio:70000},
+  {nombre:"TALU - TABLA PICAR LUXOR MADERA",precio:69700},
+  {nombre:"TALC - TABLA PICAR LUXOR COMPACT MADERA",precio:45800},
+  {nombre:"TALM - TABLA PICAR LUXOR MINI MADERA",precio:39700},
+  {nombre:"TAMO Q71 - TABLA PICAR Q71 MONTELLI BLANCO",precio:182400},
+  {nombre:"TAVT Q55 - TABLA PICAR Q55 VIDRIO TEMPLADO",precio:91900},
+  {nombre:"TAVTLQ - TABLA PICAR QUADRA VIDRIO TEMPLADO",precio:107800},
+  {nombre:"TACVVT - TABLA PICAR CURVE VIDRIO TEMPLADO",precio:159100},
+  {nombre:"TA Q40 - TABLA PICAR QUADRA MADERA",precio:71200},
+  {nombre:"TA Q37 - TABLA PICAR QUADRA MADERA",precio:44200},
+  {nombre:"KG - KIT GRAMPAS PARA PILETAS DE ABAJO",precio:8900},
+];
+
 // ========== STATE ==========
 let materiales = [];
 let items = [];
+let otros = [];
 let historial = [];
 let mesadaPiezas = [];
 let zocaloPiezas = [];
@@ -409,6 +551,7 @@ let sortField = 'fecha';
 let sortDir = -1;
 let nextPieceId = 1;
 let selectedMatIdx = null;
+let materialesExtra = [];
 
 // ========== DARK MODE ==========
 function toggleDark() {
@@ -427,18 +570,31 @@ function loadData() {
   const mp = localStorage.getItem('marmocult_precios');
   if (mp) {
     const d = JSON.parse(mp);
-    materiales = d.materiales || JSON.parse(JSON.stringify(DEFAULT_MATERIALES));
+    const savedVer = d.matVersion || 0;
+    materiales = (savedVer >= MAT_VERSION && d.materiales) ? d.materiales : JSON.parse(JSON.stringify(DEFAULT_MATERIALES));
     items = d.items || JSON.parse(JSON.stringify(DEFAULT_ITEMS));
+    // Migrate combined traforo items into split versions
+    const splits = [
+      {from:"Trasforo bacha o anafe", to:[{nombre:"Trasforo bacha",precio:72000},{nombre:"Trasforo anafe",precio:72000}]},
+      {from:"Trasforo griferia / llave de gas", to:[{nombre:"Trasforo griferia",precio:19200},{nombre:"Trasforo llave de gas",precio:19200}]},
+    ];
+    splits.forEach(s => {
+      const idx = items.findIndex(it => it.nombre === s.from);
+      if (idx >= 0) items.splice(idx, 1, ...s.to);
+    });
+    otros = (d.otros && d.otros.length) ? d.otros : JSON.parse(JSON.stringify(DEFAULT_OTROS));
   } else {
     materiales = JSON.parse(JSON.stringify(DEFAULT_MATERIALES));
     items = JSON.parse(JSON.stringify(DEFAULT_ITEMS));
+    otros = JSON.parse(JSON.stringify(DEFAULT_OTROS));
   }
+  savePrecios();
   const h = localStorage.getItem('marmocult_historial');
   historial = h ? JSON.parse(h) : [];
 }
 
 function savePrecios() {
-  localStorage.setItem('marmocult_precios', JSON.stringify({materiales, items}));
+  localStorage.setItem('marmocult_precios', JSON.stringify({materiales, items, otros, matVersion: MAT_VERSION}));
 }
 
 function saveHistorial() {
@@ -524,6 +680,11 @@ function populateItemSelect() {
   sel.innerHTML = '<option value="">-- Seleccionar item --</option>';
   items.forEach((it, i) => {
     sel.innerHTML += '<option value="' + i + '">' + it.nombre + ' - ' + fmt(it.precio) + '</option>';
+  });
+  const osel = document.getElementById('otro-select');
+  osel.innerHTML = '<option value="">-- Seleccionar item --</option>';
+  otros.forEach((it, i) => {
+    osel.innerHTML += '<option value="' + i + '">' + it.nombre + ' - ' + fmt(it.precio) + '</option>';
   });
 }
 
@@ -638,18 +799,16 @@ function updateItemP(id, field, val) {
   recalc();
 }
 
-function addCustomItem() {
-  const nombre = document.getElementById('custom-nombre').value.trim();
-  const precio = parseFloat(document.getElementById('custom-precio').value) || 0;
-  const cantidad = parseInt(document.getElementById('custom-cant').value) || 1;
-  if (!nombre) return alert('Ingrese un nombre para el item');
+function addOtroFromSelect() {
+  const sel = document.getElementById('otro-select');
+  const idx = sel.value;
+  if (idx === '') return;
+  const it = otros[idx];
   const id = nextPieceId++;
-  customItems.push({id, nombre, precio, cantidad});
+  customItems.push({id, nombre: it.nombre, precio: it.precio, cantidad: 1});
   renderCustomItems();
   recalc();
-  document.getElementById('custom-nombre').value = '';
-  document.getElementById('custom-precio').value = '';
-  document.getElementById('custom-cant').value = '1';
+  sel.value = '';
 }
 
 function removeCustomItem(id) {
@@ -757,6 +916,22 @@ function guardarPresupuesto() {
 
   const total = costoMesada + costoZocalo + costoItems;
 
+  const todosMateriales = [{
+    material: mat.nombre, categoria: mat.cat, espesor: mat.espesor,
+    precioM2, moneda, tipoCambio: tc, precioARS_m2: precioARS,
+    costoMesada, costoZocalo, total
+  }];
+  materialesExtra.forEach(me => {
+    const precioARSe = me.moneda === 'USD' ? me.precio * me.tc : me.precio;
+    const cm = totalM2 * precioARSe;
+    const cz = zocaloM2 * precioARSe;
+    todosMateriales.push({
+      material: me.nombre, categoria: me.cat, espesor: me.espesor,
+      precioM2: me.precio, moneda: me.moneda, tipoCambio: me.tc, precioARS_m2: precioARSe,
+      costoMesada: cm, costoZocalo: cz, total: cm + cz + costoItems
+    });
+  });
+
   const presupuesto = {
     id: Date.now().toString(36) + Math.random().toString(36).substr(2,5),
     fecha: new Date().toISOString(),
@@ -777,7 +952,8 @@ function guardarPresupuesto() {
     costoMesada,
     costoZocalo,
     costoItems,
-    total
+    total,
+    todosMateriales
   };
 
   historial.push(presupuesto);
@@ -801,6 +977,8 @@ function limpiarPresupuesto() {
   zocaloPiezas = [];
   itemsPresupuesto = [];
   customItems = [];
+  materialesExtra = [];
+  renderMaterialesExtra();
   renderMesadaPiezas();
   renderZocaloPiezas();
   renderItemsPresupuesto();
@@ -815,10 +993,140 @@ function getPrintTitle() {
   return cliente.replace(/\s+/g, '_') + '_' + fecha;
 }
 
+function agregarMaterialExtra() {
+  if (selectedMatIdx === null) return alert('Primero seleccione un material');
+  const precio = parseFloat(document.getElementById('precio-m2').value) || 0;
+  const moneda = document.getElementById('moneda-display').value;
+  const tc = moneda === 'USD' ? (parseFloat(document.getElementById('tipo-cambio').value) || 0) : 1;
+  const m = materiales[selectedMatIdx];
+  materialesExtra.push({idx:selectedMatIdx, nombre:m.nombre, cat:m.cat, espesor:m.espesor, precio, moneda, tc});
+  renderMaterialesExtra();
+}
+
+function quitarMaterialExtra(i) {
+  materialesExtra.splice(i, 1);
+  renderMaterialesExtra();
+}
+
+function renderMaterialesExtra() {
+  const cont = document.getElementById('materiales-extra-list');
+  cont.innerHTML = materialesExtra.map((m, i) =>
+    '<span class="mat-chip">' + m.nombre + ' <small>(' + m.espesor + ')</small> · ' +
+    (m.moneda === 'USD' ? 'USD ' + m.precio : fmt(m.precio)) +
+    '<button onclick="quitarMaterialExtra(' + i + ')" title="Quitar">×</button></span>'
+  ).join('');
+}
+
+function buildMaterialPage(mat) {
+  const precioARS = mat.moneda === 'USD' ? mat.precio * mat.tc : mat.precio;
+  const cliente = document.getElementById('cliente-nombre').value.trim() || '';
+  const realizadoPor = document.getElementById('realizado-por').value.trim();
+  const plazo = document.getElementById('plazo-entrega').value.trim();
+  const fecha = new Date().toLocaleDateString('es-AR');
+
+  let totalM2 = 0;
+  let mesadaHtml = '';
+  mesadaPiezas.forEach((p, i) => {
+    totalM2 += p.largo * p.ancho;
+    mesadaHtml += '<div class="piece-row">' +
+      '<span class="piece-label">#' + (i+1) + '</span>' +
+      '<input type="number" value="' + (p.largo||'') + '" readonly><span class="unit-m">m</span>' +
+      '<span class="piece-label">x</span>' +
+      '<input type="number" value="' + (p.ancho||'') + '" readonly><span class="unit-m">m</span>' +
+    '</div>';
+  });
+  const costoMesada = totalM2 * precioARS;
+
+  let zocaloM2 = 0;
+  let zocaloHtml = '';
+  zocaloPiezas.forEach((p, i) => {
+    zocaloM2 += p.largo * p.alto;
+    zocaloHtml += '<div class="piece-row">' +
+      '<span class="piece-label">#' + (i+1) + '</span>' +
+      '<input type="number" value="' + (p.largo||'') + '" readonly><span class="unit-m">m</span>' +
+      '<span class="piece-label">x</span>' +
+      '<input type="number" value="' + (p.alto||'') + '" readonly><span class="unit-m">m</span>' +
+    '</div>';
+  });
+  const costoZocalo = zocaloM2 * precioARS;
+
+  let itemsHtml = '';
+  let costoItems = 0;
+  [...itemsPresupuesto, ...customItems].forEach(it => {
+    costoItems += it.precio * it.cantidad;
+    itemsHtml += '<div class="total-line"><span>' + it.nombre + ' ×' + it.cantidad + '</span><span>' + fmt(it.precio * it.cantidad) + '</span></div>';
+  });
+
+  const total = costoMesada + costoZocalo + costoItems;
+
+  let resumen = '<div class="total-line"><span>Mesada</span><span>' + fmt(costoMesada) + '</span></div>';
+  if (zocaloM2 > 0) resumen += '<div class="total-line"><span>Zocalo</span><span>' + fmt(costoZocalo) + '</span></div>';
+  resumen += itemsHtml;
+  resumen += '<div class="total-line grand"><span>TOTAL</span><span>' + fmt(total) + '</span></div>';
+
+  const esc = s => String(s).replace(/"/g, '&quot;');
+  return '<div class="print-page">' +
+    '<div class="header"><img src="logo.jpeg" alt="MarmoCult"></div>' +
+    '<div class="card"><h2>Datos del Presupuesto</h2>' +
+      '<div class="row">' +
+        '<div><label>Nombre del Cliente</label><input type="text" value="' + esc(cliente) + '" readonly></div>' +
+        '<div><label>Realizado por</label><input type="text" value="' + esc(realizadoPor) + '" readonly></div>' +
+      '</div>' +
+      '<div class="row">' +
+        '<div class="plazo-field"><label>Plazo de entrega:</label>' +
+          '<div class="plazo-wrap" style="display:flex;align-items:baseline;gap:4px">' +
+            '<span class="plazo-text">' + esc(plazo) + '</span>' +
+            (plazo ? '<span style="white-space:nowrap">días</span>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div></div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="card"><h2>Material</h2>' +
+      '<div style="font-size:1rem;font-weight:600;margin-bottom:8px">' + mat.nombre + ' — ' + mat.cat + ' (' + mat.espesor + ')</div>' +
+    '</div>' +
+    (mesadaHtml ? '<div class="card"><h2>Piezas de Mesada</h2>' + mesadaHtml + '</div>' : '') +
+    (zocaloHtml ? '<div class="card"><h2>Piezas de Zocalo</h2>' + zocaloHtml + '</div>' : '') +
+    '<div class="total-box"><h3>Resumen del Presupuesto</h3>' + resumen + '</div>' +
+    '<div class="print-condiciones">' +
+      '<p>El presupuesto puede variar sin previo aviso.</p>' +
+      '<p>El trabajo se entrega colocado en obra sin instalacion electrica ni sanitaria.</p>' +
+      '<p>Condicion de pago: 50% para la seña y 50% restante cuando se entrega el trabajo.' +
+      (plazo ? ' Plazo de entrega: ' + plazo + ' días.' : '') + '</p>' +
+    '</div>' +
+    '<div class="print-contacto"><strong>MarmoCult</strong><br>' +
+      'General Soler 2182, Rio Cuarto, Cordoba<br>' +
+      'WhatsApp: 358 155124623 | Tel: 4630497 | E-mail: contacto@marmocult.com.ar</div>' +
+  '</div>';
+}
+
 function imprimirPresupuesto() {
   const orig = document.title;
   document.title = getPrintTitle();
-  window.print();
+  document.getElementById('plazo-text').textContent = document.getElementById('plazo-entrega').value.trim();
+
+  if (materialesExtra.length > 0 && selectedMatIdx !== null) {
+    const primary = materiales[selectedMatIdx];
+    const primaryMat = {
+      idx: selectedMatIdx,
+      nombre: primary.nombre,
+      cat: primary.cat,
+      espesor: primary.espesor,
+      precio: parseFloat(document.getElementById('precio-m2').value) || 0,
+      moneda: document.getElementById('moneda-display').value,
+      tc: parseFloat(document.getElementById('tipo-cambio').value) || 1,
+    };
+    const todos = [primaryMat, ...materialesExtra];
+    const container = document.getElementById('print-multi');
+    container.innerHTML = todos.map(buildMaterialPage).join('');
+    document.body.classList.add('multi-print');
+    window.print();
+    document.body.classList.remove('multi-print');
+    container.innerHTML = '';
+  } else {
+    window.print();
+  }
+
   document.title = orig;
 }
 
@@ -900,7 +1208,8 @@ function renderPrecios() {
       html += '<div class="cat-header"><span>' + m.cat + '</span></div>';
     }
     const badge = m.moneda === 'USD' ? '<span class="badge badge-usd">USD</span>' : '<span class="badge badge-ars">ARS</span>';
-    html += '<div class="item-row">' +
+    html += '<div class="item-row" draggable="true" data-type="mat" data-i="' + i + '"' + dragAttrs() + '>' +
+      '<span class="drag-handle">⠿</span>' +
       '<span class="item-name">' + m.nombre + '</span>' +
       '<span class="item-detail">' + m.espesor + '</span>' +
       badge +
@@ -919,13 +1228,84 @@ function renderPrecios() {
   const icont = document.getElementById('precios-items');
   html = '';
   items.forEach((it, i) => {
-    html += '<div class="item-row">' +
+    html += '<div class="item-row" draggable="true" data-type="item" data-i="' + i + '"' + dragAttrs() + '>' +
+      '<span class="drag-handle">⠿</span>' +
       '<span class="item-name">' + it.nombre + '</span>' +
       '<input type="number" class="price-input" step="0.01" value="' + it.precio + '" onchange="updateItemPrecio(' + i + ',this.value)">' +
       '<button class="remove-btn btn-sm" style="margin-left:4px" onclick="removeItem(' + i + ')">×</button>' +
       '</div>';
   });
   icont.innerHTML = html;
+
+  // Otros
+  const ocont = document.getElementById('precios-otros');
+  html = '';
+  otros.forEach((it, i) => {
+    html += '<div class="item-row" draggable="true" data-type="otro" data-i="' + i + '"' + dragAttrs() + '>' +
+      '<span class="drag-handle">⠿</span>' +
+      '<span class="item-name">' + it.nombre + '</span>' +
+      '<input type="number" class="price-input" step="0.01" value="' + it.precio + '" onchange="updateOtroPrecio(' + i + ',this.value)">' +
+      '<button class="remove-btn btn-sm" style="margin-left:4px" onclick="removeOtro(' + i + ')">×</button>' +
+      '</div>';
+  });
+  ocont.innerHTML = html || '<p style="color:var(--text4);font-size:.85rem">No hay items. Agregue uno debajo.</p>';
+}
+
+let dragState = null;
+function dragAttrs() {
+  return ' ondragstart="onRowDragStart(event)" ondragover="onRowDragOver(event)" ondragleave="onRowDragLeave(event)" ondragend="onRowDragEnd(event)" ondrop="onRowDrop(event)"';
+}
+
+function onRowDragStart(e) {
+  const row = e.currentTarget;
+  dragState = {type: row.dataset.type, i: parseInt(row.dataset.i, 10)};
+  row.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', '');
+}
+
+function onRowDragOver(e) {
+  const row = e.currentTarget;
+  if (!dragState || row.dataset.type !== dragState.type) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const rect = row.getBoundingClientRect();
+  const after = (e.clientY - rect.top) > rect.height / 2;
+  row.classList.toggle('drag-over-top', !after);
+  row.classList.toggle('drag-over-bottom', after);
+}
+
+function onRowDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over-top', 'drag-over-bottom');
+}
+
+function onRowDragEnd(e) {
+  document.querySelectorAll('.item-row').forEach(r => r.classList.remove('dragging','drag-over-top','drag-over-bottom'));
+  dragState = null;
+}
+
+function onRowDrop(e) {
+  const row = e.currentTarget;
+  if (!dragState || row.dataset.type !== dragState.type) return;
+  e.preventDefault();
+  const destIdx = parseInt(row.dataset.i, 10);
+  const rect = row.getBoundingClientRect();
+  const after = (e.clientY - rect.top) > rect.height / 2;
+  const arr = dragState.type === 'mat' ? materiales : dragState.type === 'item' ? items : otros;
+  const from = dragState.i;
+  let to = after ? destIdx + 1 : destIdx;
+  if (from === to || from === to - 1) { onRowDragEnd(e); return; }
+  const [moved] = arr.splice(from, 1);
+  if (from < to) to--;
+  if (dragState.type === 'mat') {
+    const neighbor = arr[to] || arr[to - 1];
+    if (neighbor) moved.cat = neighbor.cat;
+  }
+  arr.splice(to, 0, moved);
+  savePrecios();
+  renderPrecios();
+  populateItemSelect();
+  dragState = null;
 }
 
 function updateMatPrecio(i, val) {
@@ -989,9 +1369,35 @@ function addNewItem() {
   document.getElementById('new-item-precio').value = '';
 }
 
+function updateOtroPrecio(i, val) {
+  otros[i].precio = parseFloat(val) || 0;
+  savePrecios();
+  populateItemSelect();
+}
+
+function removeOtro(i) {
+  if (!confirm('Eliminar ' + otros[i].nombre + '?')) return;
+  otros.splice(i, 1);
+  savePrecios();
+  renderPrecios();
+  populateItemSelect();
+}
+
+function addNewOtro() {
+  const nombre = document.getElementById('new-otro-nombre').value.trim();
+  const precio = parseFloat(document.getElementById('new-otro-precio').value) || 0;
+  if (!nombre) return alert('Ingrese un nombre');
+  otros.push({nombre, precio});
+  savePrecios();
+  renderPrecios();
+  populateItemSelect();
+  document.getElementById('new-otro-nombre').value = '';
+  document.getElementById('new-otro-precio').value = '';
+}
+
 // ========== EXPORT/IMPORT PRECIOS ==========
 function exportPrecios() {
-  const data = JSON.stringify({materiales, items}, null, 2);
+  const data = JSON.stringify({materiales, items, otros}, null, 2);
   downloadJSON(data, 'marmocult_precios_' + dateStr() + '.json');
 }
 
@@ -1013,6 +1419,13 @@ function importPrecios(evt) {
         data.items.forEach(ni => {
           if (!items.find(it => it.nombre === ni.nombre)) {
             items.push(ni);
+          }
+        });
+      }
+      if (data.otros) {
+        data.otros.forEach(no => {
+          if (!otros.find(it => it.nombre === no.nombre)) {
+            otros.push(no);
           }
         });
       }
@@ -1167,15 +1580,94 @@ function copiarHistorial(id) {
   });
 }
 
+function buildHistorialPage(p, matOverride) {
+  const esc = s => String(s == null ? '' : s).replace(/"/g, '&quot;');
+  const fecha = new Date(p.fecha).toLocaleDateString('es-AR');
+  const m = matOverride || {material: p.material, categoria: p.categoria, costoMesada: p.costoMesada, costoZocalo: p.costoZocalo, total: p.total};
+
+  let mesadaHtml = '';
+  (p.mesadaPiezas || []).forEach((mp, i) => {
+    mesadaHtml += '<div class="piece-row">' +
+      '<span class="piece-label">#' + (i+1) + '</span>' +
+      '<input type="number" value="' + (mp.largo||'') + '" readonly><span class="unit-m">m</span>' +
+      '<span class="piece-label">x</span>' +
+      '<input type="number" value="' + (mp.ancho||'') + '" readonly><span class="unit-m">m</span>' +
+    '</div>';
+  });
+
+  let zocaloHtml = '';
+  (p.zocaloPiezas || []).forEach((zp, i) => {
+    zocaloHtml += '<div class="piece-row">' +
+      '<span class="piece-label">#' + (i+1) + '</span>' +
+      '<input type="number" value="' + (zp.largo||'') + '" readonly><span class="unit-m">m</span>' +
+      '<span class="piece-label">x</span>' +
+      '<input type="number" value="' + (zp.alto||'') + '" readonly><span class="unit-m">m</span>' +
+    '</div>';
+  });
+
+  let itemsHtml = '';
+  (p.items || []).forEach(it => {
+    itemsHtml += '<div class="total-line"><span>' + it.nombre + ' ×' + it.cantidad + '</span><span>' + fmt(it.precio * it.cantidad) + '</span></div>';
+  });
+
+  let resumen = '<div class="total-line"><span>Mesada</span><span>' + fmt(m.costoMesada||0) + '</span></div>';
+  if ((p.zocaloM2 || 0) > 0 || (p.zocaloPiezas || []).length) {
+    resumen += '<div class="total-line"><span>Zocalo</span><span>' + fmt(m.costoZocalo||0) + '</span></div>';
+  }
+  resumen += itemsHtml;
+  resumen += '<div class="total-line grand"><span>TOTAL</span><span>' + fmt(m.total||0) + '</span></div>';
+
+  return '<div class="print-page">' +
+    '<div class="header"><img src="logo.jpeg" alt="MarmoCult"></div>' +
+    '<div class="card"><h2>Datos del Presupuesto</h2>' +
+      '<div class="row">' +
+        '<div><label>Nombre del Cliente</label><input type="text" value="' + esc(p.cliente) + '" readonly></div>' +
+        '<div><label>Realizado por</label><input type="text" value="' + esc(p.realizadoPor) + '" readonly></div>' +
+      '</div>' +
+      '<div class="row">' +
+        '<div class="plazo-field"><label>Plazo de entrega:</label>' +
+          '<div class="plazo-wrap" style="display:flex;align-items:baseline;gap:4px">' +
+            '<span class="plazo-text">' + esc(p.plazoEntrega) + '</span>' +
+            (p.plazoEntrega ? '<span style="white-space:nowrap">días</span>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div></div>' +
+      '</div>' +
+      '<div style="color:var(--text4);font-size:.85rem;margin-top:4px">Fecha: ' + fecha + '</div>' +
+    '</div>' +
+    '<div class="card"><h2>Material</h2>' +
+      '<div style="font-size:1rem;font-weight:600;margin-bottom:8px">' + (m.material||'') + ' — ' + (m.categoria||'') + '</div>' +
+    '</div>' +
+    (mesadaHtml ? '<div class="card"><h2>Piezas de Mesada</h2>' + mesadaHtml + '</div>' : '') +
+    (zocaloHtml ? '<div class="card"><h2>Piezas de Zocalo</h2>' + zocaloHtml + '</div>' : '') +
+    '<div class="total-box"><h3>Resumen del Presupuesto</h3>' + resumen + '</div>' +
+    '<div class="print-condiciones">' +
+      '<p>El presupuesto puede variar sin previo aviso.</p>' +
+      '<p>El trabajo se entrega colocado en obra sin instalacion electrica ni sanitaria.</p>' +
+      '<p>Condicion de pago: 50% para la seña y 50% restante cuando se entrega el trabajo.</p>' +
+    '</div>' +
+    '<div class="print-contacto"><strong>MarmoCult</strong><br>' +
+      'General Soler 2182, Rio Cuarto, Cordoba<br>' +
+      'WhatsApp: 358 155124623 | Tel: 4630497 | E-mail: contacto@marmocult.com.ar</div>' +
+  '</div>';
+}
+
 function imprimirHistorial(id) {
   const p = historial.find(x => x.id === id);
   if (!p) return;
-  verDetalle(id);
   const d = new Date(p.fecha);
   const fecha = String(d.getDate()).padStart(2,'0') + '_' + String(d.getMonth()+1).padStart(2,'0') + '_' + d.getFullYear();
   const orig = document.title;
   document.title = p.cliente.replace(/\s+/g, '_') + '_' + fecha;
-  setTimeout(() => { window.print(); document.title = orig; }, 300);
+
+  const container = document.getElementById('print-multi');
+  const mats = (p.todosMateriales && p.todosMateriales.length) ? p.todosMateriales : [null];
+  container.innerHTML = mats.map(m => buildHistorialPage(p, m)).join('');
+  document.body.classList.add('multi-print');
+  window.print();
+  document.body.classList.remove('multi-print');
+  container.innerHTML = '';
+  document.title = orig;
 }
 
 function closeModal() {
