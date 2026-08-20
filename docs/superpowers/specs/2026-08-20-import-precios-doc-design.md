@@ -197,13 +197,51 @@ unificados (`–`, `—` → `-`), sin contenido entre paréntesis, sin caracter
 alfanuméricos salvo espacios y dígitos, espacios colapsados.
 
 1. Coincidencia exacta sobre `normKey` dentro de la lista de destino.
-2. Si no hay, Levenshtein normalizado sobre `normKey`; se acepta con ratio ≥ 0.86.
-   Entre 0.86 y 0.95 se marca `dudoso` y el preview muestra con qué matcheó.
-3. Para `otros`, intento adicional por código + medidas, que es la parte estable
-   del nombre.
+2. Para `otros`, intento adicional por código, que es la parte estable del nombre
+   (prefijo de sección y medidas removidos).
+3. Difuso, con la restricción de abajo.
 
-Caso de referencia: `TRAFORO BACHA` contra `Trasforo bacha` da ratio ≈ 0.92, entra
-como dudoso y queda visible para revisar.
+### Por qué el difuso no puede ser un umbral de similitud
+
+La versión original de este spec aceptaba cualquier par con Levenshtein ≥ 0.86 y
+marcaba `dudoso` por debajo de 0.95. **Se implementó, se probó y falló.** Los nombres
+de esta lista son códigos densos donde cada token es significativo:
+
+| Par | Ratio | ¿Mismo artículo? |
+|---|---|---|
+| `SIMPLE SIGNATURE ENKEL SE 45` / `... SE 55` | 0.96 | **No** |
+| `SIMPLE SIGNATURE ENKEL SE 45` / `... SE 45 GB` | 0.90 | **No** |
+| `SIMPLE O 37 A` / `SIMPLE O 37 AT` | 0.96 | **No** |
+| `TRAFORO BACHA` / `TRASFORO BACHA` | 0.92 | Sí |
+
+Con el umbral, borrar `SE 45` de la app hacía que la fila `SE 45` del documento
+matcheara `SE 55` — un artículo distinto — como `actualiza` y **marcada por defecto,
+sin aviso de dudoso**, porque 0.96 supera 0.95. Aceptar el preview le habría puesto a
+`SE 55` el precio de `SE 45`. Es el falso positivo que la política conservadora de §6
+no alcanza a cubrir, porque el daño ocurre en una fila que se presenta como segura.
+
+### Regla efectiva
+
+Un match difuso se acepta **solo** si:
+
+1. Los dos nombres tienen la **misma cantidad de tokens**.
+2. Tienen la **misma secuencia de dígitos** (`45` ≠ `55`).
+3. Difieren en **exactamente un token**.
+4. Ese token difiere pero sigue siendo reconocible: ambos de **4 caracteres o más** y
+   con similitud ≥ 0.75 entre sí.
+
+Las condiciones 1 y 3 descartan `SE 45` / `SE 45 GB`. La 2 descarta `SE 45` / `SE 55`.
+La 4 descarta `O 37 A` / `O 37 AT`, donde el token que cambia es demasiado corto para
+que un carácter de diferencia signifique un error de tipeo. `TRAFORO` / `TRASFORO`
+cumple las cuatro y sigue matcheando.
+
+**Todo match no exacto se marca `dudoso`**, sin umbral: si hubo que recurrir al difuso,
+vale mirarlo. Lo que la regla rechaza cae como `nuevo` y desmarcado, que es el lado
+seguro: el peor caso es cargar un precio a mano.
+
+Efecto colateral útil: la regla destapó que el documento dice
+`TABLA PICAR QUADRA VIDRIO TEMPADO` donde la app dice `TEMPLADO`. Uno de los dos tiene
+un error de tipeo, y antes pasaba invisible.
 
 Estado de cada fila:
 
@@ -315,10 +353,28 @@ Sobre precios por defecto, importar los dos documentos da **169 matches, 0 nueva
 - Camino pegar texto: pegar el `.txt` extraído y verificar lo mismo.
 - Consola sin errores.
 
-## 9. Riesgo declarado
+## 9. Riesgo declarado — resuelto
 
-El parser de `.doc` binario es la única parte que no se puede garantizar sin
-ejecutarla. Los offsets del FIB (§4.1, paso 5) se validan contra los archivos reales
-como **primer paso** de la implementación. Si el parseo resulta inestable, se
-reporta y se replantea antes de seguir, en lugar de entregar algo que funcione a
-veces.
+El parser de `.doc` binario era la única parte que no se podía garantizar sin
+ejecutarla. **Validado:** los offsets del FIB (§4.1, paso 5) resultaron correctos y
+los dos documentos parsean limpio, incluyendo las tildes de `MÁRMOLES` y la
+conversión de fin-de-celda a tabs que preserva las columnas.
+
+## 10. Resultado de la implementación
+
+Todo lo de §8 pasa. Además de la aserción de aceptación, la implementación encontró
+tres defectos que el spec original no anticipaba:
+
+1. **Columnas separadas por espacios, no por tabs.** Siete filas `SIGNATURE ENKEL`
+   traen espacios entre el código y las medidas, así que dividir por tabs las metía
+   en una sola columna. Las medidas se buscan ahora en la línea entera y el código es
+   lo que va antes.
+2. **Descripciones que imitan medidas.** `REJILLA ENROLLABLE RECT 32X42` matchea el
+   regex de medidas. El formato lo decide ahora la sección (`ACCESORIOS` nunca busca
+   medidas), como decía §3, en lugar de inferirse de si aparecen medidas.
+3. **El umbral de similitud era inseguro.** Ver §4.4.
+
+Verificado en el navegador: los tres orígenes (`.doc`, `.docx`, pegar texto) producen
+las mismas filas, Cancelar deja `localStorage` byte-idéntico, un precio editado a mano
+en el preview gana sobre el del documento, una fila desmarcada no se toca, y las
+inserciones de material caen al final de su categoría. Cero errores de consola.
