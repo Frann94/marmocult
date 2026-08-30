@@ -133,6 +133,38 @@ tr:hover{background:var(--bg4)}
 .item-row.dragging{opacity:.4}
 .item-row.drag-over-top{border-top:2px solid var(--accent)!important}
 .item-row.drag-over-bottom{border-bottom:2px solid var(--accent)!important}
+.total-edit{display:flex;align-items:center;gap:8px}
+.total-input{width:170px;padding:4px 8px;margin-bottom:0;text-align:right;font-size:1.2rem;font-weight:700;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.5);color:#fff;border-radius:5px}
+.total-input:focus{outline:none;background:rgba(255,255,255,.3);border-color:#fff;box-shadow:none}
+.btn-reset-total{background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.5);color:#fff;border-radius:5px;cursor:pointer;font-size:.95rem;line-height:1;padding:5px 9px}
+.btn-reset-total:hover{background:rgba(255,255,255,.35)}
+.tc-note{background:var(--accent-light);border:1px solid var(--accent);border-radius:6px;padding:8px 10px;margin:12px 0;font-size:.85rem;color:var(--text2)}
+.tc-note strong{color:var(--accent)}
+.print-sector{display:none}
+@media print{
+  .print-sector{display:block!important;font-size:.8rem;color:#555!important;padding:1px 8px 3px;margin-bottom:2px}
+  .print-sector::before{content:"Sector: ";font-weight:700;color:#333!important}
+  .print-sector:empty{display:none!important}
+}
+/* Preview del import de precios */
+.modal.modal-wide{max-width:1150px}
+.imp-sum{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.imp-sum span{background:var(--bg3);border-radius:12px;padding:4px 10px;font-size:.8rem;color:var(--text2)}
+.imp-scroll{max-height:50vh;overflow:auto;border:1px solid var(--border3);border-radius:6px}
+.imp-tabla{width:100%;border-collapse:collapse;font-size:.85rem;margin:0}
+.imp-tabla th{position:sticky;top:0;background:var(--bg3);z-index:1;padding:8px 6px;font-size:.7rem}
+.imp-tabla td{padding:4px 6px;border-bottom:1px solid var(--border4)}
+.imp-tabla input,.imp-tabla select{margin-bottom:0;padding:4px 6px;font-size:.8rem}
+.imp-tabla tr.off{opacity:.45}
+.imp-viejo{text-decoration:line-through;color:var(--text5)}
+.badge-nuevo{background:#e8f5e9;color:#2e7d32}
+.badge-dudoso{background:#fff3e0;color:#c77700}
+.badge-dup{background:#fdecea;color:#c62828}
+[data-theme="dark"] .badge-nuevo{background:#1a3c1a;color:#81c784}
+[data-theme="dark"] .badge-dudoso{background:#3a2f1a;color:#f0a030}
+[data-theme="dark"] .badge-dup{background:#3c1a1a;color:#ef9a9a}
+.imp-faltantes{margin-top:12px;font-size:.8rem;color:var(--text4)}
+.imp-faltantes ul{max-height:120px;overflow:auto;margin:6px 0 0 18px}
 </style>
 </head>
 <body>
@@ -174,9 +206,14 @@ tr:hover{background:var(--bg4)}
           <span class="only-print" style="white-space:nowrap">días</span>
         </div>
       </div>
-      <div></div>
+      <div class="print-hide">
+        <label>Sector</label>
+        <input type="text" id="sector" placeholder="Ej: Cocina, Baño" oninput="syncSector()">
+      </div>
     </div>
   </div>
+
+  <div class="print-sector" id="print-sector"></div>
 
   <div class="card">
     <h2>Material</h2>
@@ -209,15 +246,29 @@ tr:hover{background:var(--bg4)}
   </div>
 
   <div class="card">
-    <h2>Piezas de Mesada</h2>
+    <h2>Mesada</h2>
     <div id="mesada-piezas"></div>
     <button class="btn btn-outline btn-sm" onclick="addMesadaPieza()">+ Agregar Pieza</button>
   </div>
 
   <div class="card">
-    <h2>Piezas de Zocalo</h2>
+    <h2>Zocalo</h2>
     <div id="zocalo-piezas"></div>
     <button class="btn btn-outline btn-sm" onclick="addZocaloPieza()">+ Agregar Pieza</button>
+  </div>
+
+  <div class="card" id="card-frente">
+    <h2>Frente doble</h2>
+    <div id="frente-piezas"></div>
+    <button class="btn btn-outline btn-sm" onclick="addFrentePieza()">+ Agregar Pieza</button>
+    <div id="frente-items" style="margin-top:8px"></div>
+    <div style="margin-top:8px" class="print-hide">
+      <label>Agregar item predefinido</label>
+      <select id="frente-select">
+        <option value="">-- Seleccionar item --</option>
+      </select>
+      <button class="btn btn-outline btn-sm" style="margin-top:4px" onclick="addFrenteFromSelect()">+ Agregar Item</button>
+    </div>
   </div>
 
   <div class="card">
@@ -233,7 +284,7 @@ tr:hover{background:var(--bg4)}
   </div>
 
   <div class="card">
-    <h2>Otros Adicionales</h2>
+    <h2>Bachas</h2>
     <div id="items-custom"></div>
     <div style="margin-top:8px">
       <label>Agregar item predefinido</label>
@@ -272,6 +323,22 @@ tr:hover{background:var(--bg4)}
 
 <div id="tab-precios" class="content hidden">
   <div class="card">
+    <h2>Actualizar precios desde documento</h2>
+    <p style="font-size:.85rem;color:var(--text4);margin-bottom:12px">Elija el documento de precios (.doc o .docx). Antes de aplicar nada se muestra un preview que puede editar, aceptar o cancelar.</p>
+    <div class="btn-group" style="margin-top:0">
+      <button class="btn btn-primary btn-sm" onclick="document.getElementById('import-doc-file').click()">Elegir documento...</button>
+      <input type="file" id="import-doc-file" accept=".doc,.docx" class="hidden" onchange="importarDocumento(event)">
+      <button class="btn btn-outline btn-sm" onclick="togglePegarTexto()">o pegar texto</button>
+    </div>
+    <div id="pegar-texto-box" class="hidden" style="margin-top:12px">
+      <label>Pegue el contenido del documento (en Word: Ctrl+A, Ctrl+C)</label>
+      <textarea id="pegar-texto" rows="6" style="font-family:monospace;font-size:.8rem"></textarea>
+      <button class="btn btn-primary btn-sm" onclick="procesarTextoPegado()">Procesar texto</button>
+    </div>
+    <div id="import-doc-status" style="margin-top:8px;font-size:.85rem;color:var(--text4)"></div>
+  </div>
+
+  <div class="card">
     <h2>Lista de Precios de Materiales</h2>
     <p style="font-size:.85rem;color:var(--text4);margin-bottom:12px">Edite los precios directamente. Los cambios se guardan automaticamente.</p>
     <div id="precios-materiales"></div>
@@ -302,7 +369,17 @@ tr:hover{background:var(--bg4)}
   </div>
 
   <div class="card">
-    <h2>Otros Adicionales (Precios)</h2>
+    <h2>Frente doble (Precios)</h2>
+    <div id="precios-frentes"></div>
+    <div class="row" style="margin-top:12px;align-items:end">
+      <div><label>Nombre</label><input type="text" id="new-frente-nombre" style="margin-bottom:0"></div>
+      <div><label>Precio ($)</label><input type="number" id="new-frente-precio" step="0.01" style="margin-bottom:0"></div>
+      <div style="flex:0"><button class="btn btn-primary btn-sm" onclick="addNewFrente()">+</button></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Bachas (Precios)</h2>
     <div id="precios-otros"></div>
     <div class="row" style="margin-top:12px;align-items:end">
       <div><label>Nombre</label><input type="text" id="new-otro-nombre" style="margin-bottom:0"></div>
@@ -360,6 +437,7 @@ tr:hover{background:var(--bg4)}
 <script>
 // ========== DATA ==========
 const MAT_VERSION = 2;
+const FRENTES_VERSION = 1;
 const DEFAULT_MATERIALES = [
   {cat:"Granitos Nacionales",nombre:"ROSA DEL SALTO",espesor:"2 CM",precio:195200,moneda:"ARS"},
   {cat:"Granitos Nacionales",nombre:"ORCOLLANO",espesor:"2 CM",precio:195200,moneda:"ARS"},
@@ -434,6 +512,10 @@ const DEFAULT_ITEMS = [
   {nombre:"Fondo de acero para bacha integrada",precio:208000},
   {nombre:"Armado de totem",precio:528000},
   {nombre:"Pulido de interiores de patas simples",precio:96000},
+];
+
+// Categoria propia: agregados que se cobran por metro lineal de frente doble
+const DEFAULT_FRENTES = [
   {nombre:"Metro lineal de frente doble - inglete",precio:72000},
   {nombre:"Metro lineal de corte especial o circular",precio:72000},
 ];
@@ -541,12 +623,16 @@ const DEFAULT_OTROS = [
 // ========== STATE ==========
 let materiales = [];
 let items = [];
+let frentes = [];
 let otros = [];
 let historial = [];
 let mesadaPiezas = [];
 let zocaloPiezas = [];
+let frentePiezas = [];
+let frenteItems = [];
 let itemsPresupuesto = [];
 let customItems = [];
+let totalOverride = null;
 let sortField = 'fecha';
 let sortDir = -1;
 let nextPieceId = 1;
@@ -583,9 +669,28 @@ function loadData() {
       if (idx >= 0) items.splice(idx, 1, ...s.to);
     });
     otros = (d.otros && d.otros.length) ? d.otros : JSON.parse(JSON.stringify(DEFAULT_OTROS));
+    frentes = d.frentes || [];
+    // Los agregados de frente doble pasan a su categoria propia (una sola vez),
+    // conservando el precio que tuvieran cargado en Agregados.
+    if ((d.frentesVersion || 0) < FRENTES_VERSION) {
+      const quedan = [];
+      items.forEach(it => {
+        if (esItemFrente(it.nombre)) {
+          if (!frentes.find(f => f.nombre === it.nombre)) frentes.push(it);
+        } else {
+          quedan.push(it);
+        }
+      });
+      items = quedan;
+      // Repone los predefinidos que falten (por ejemplo si se borraron sin querer)
+      DEFAULT_FRENTES.forEach(df => {
+        if (!frentes.find(f => f.nombre === df.nombre)) frentes.push(Object.assign({}, df));
+      });
+    }
   } else {
     materiales = JSON.parse(JSON.stringify(DEFAULT_MATERIALES));
     items = JSON.parse(JSON.stringify(DEFAULT_ITEMS));
+    frentes = JSON.parse(JSON.stringify(DEFAULT_FRENTES));
     otros = JSON.parse(JSON.stringify(DEFAULT_OTROS));
   }
   savePrecios();
@@ -594,7 +699,7 @@ function loadData() {
 }
 
 function savePrecios() {
-  localStorage.setItem('marmocult_precios', JSON.stringify({materiales, items, otros, matVersion: MAT_VERSION}));
+  localStorage.setItem('marmocult_precios', JSON.stringify({materiales, items, frentes, otros, matVersion: MAT_VERSION, frentesVersion: FRENTES_VERSION}));
 }
 
 function saveHistorial() {
@@ -675,11 +780,22 @@ document.addEventListener('click', function(e) {
   }
 });
 
+// Nombres que pertenecen a la categoria Frente doble (se usa solo al migrar datos viejos)
+function esItemFrente(nombre) {
+  const n = (nombre || '').toLowerCase();
+  return /frente\s+doble/.test(n) || /corte\s+especial\s+o\s+circular/.test(n);
+}
+
 function populateItemSelect() {
   const sel = document.getElementById('item-select');
   sel.innerHTML = '<option value="">-- Seleccionar item --</option>';
   items.forEach((it, i) => {
     sel.innerHTML += '<option value="' + i + '">' + it.nombre + ' - ' + fmt(it.precio) + '</option>';
+  });
+  const fsel = document.getElementById('frente-select');
+  fsel.innerHTML = '<option value="">-- Seleccionar item --</option>';
+  frentes.forEach((it, i) => {
+    fsel.innerHTML += '<option value="' + i + '">' + it.nombre + ' - ' + fmt(it.precio) + '</option>';
   });
   const osel = document.getElementById('otro-select');
   osel.innerHTML = '<option value="">-- Seleccionar item --</option>';
@@ -759,6 +875,81 @@ function updateZocalo(id, field, val) {
   recalc();
 }
 
+function addFrentePieza() {
+  const id = nextPieceId++;
+  frentePiezas.push({id, largo:0, alto:0});
+  renderFrentePiezas();
+}
+
+function removeFrentePieza(id) {
+  frentePiezas = frentePiezas.filter(p => p.id !== id);
+  renderFrentePiezas();
+  recalc();
+}
+
+function renderFrentePiezas() {
+  const cont = document.getElementById('frente-piezas');
+  cont.innerHTML = '';
+  frentePiezas.forEach((p, i) => {
+    const area = (p.largo * p.alto).toFixed(2);
+    cont.innerHTML += '<div class="piece-row">' +
+      '<span class="piece-label">#' + (i+1) + '</span>' +
+      '<input type="number" step="0.01" placeholder="Largo (m)" value="' + (p.largo||'') + '" onchange="updateFrente(' + p.id + ',\'largo\',this.value)"><span class="only-print unit-m">m</span>' +
+      '<span class="piece-label">x</span>' +
+      '<input type="number" step="0.01" placeholder="Alto (m)" value="' + (p.alto||'') + '" onchange="updateFrente(' + p.id + ',\'alto\',this.value)"><span class="only-print unit-m">m</span>' +
+      '<span class="piece-result no-print">' + area + '</span>' +
+      '<button class="remove-btn" onclick="removeFrentePieza(' + p.id + ')">×</button>' +
+      '</div>';
+  });
+}
+
+function updateFrente(id, field, val) {
+  const p = frentePiezas.find(x => x.id === id);
+  if (p) p[field] = parseFloat(val) || 0;
+  renderFrentePiezas();
+  recalc();
+}
+
+function addFrenteFromSelect() {
+  const sel = document.getElementById('frente-select');
+  const idx = sel.value;
+  if (idx === '') return;
+  const it = frentes[idx];
+  const id = nextPieceId++;
+  frenteItems.push({id, nombre: it.nombre, precio: it.precio, cantidad: 1});
+  renderFrenteItems();
+  recalc();
+  sel.value = '';
+}
+
+function removeFrenteItem(id) {
+  frenteItems = frenteItems.filter(p => p.id !== id);
+  renderFrenteItems();
+  recalc();
+}
+
+function renderFrenteItems() {
+  const cont = document.getElementById('frente-items');
+  cont.innerHTML = '';
+  frenteItems.forEach((it) => {
+    cont.innerHTML += '<div class="piece-row">' +
+      '<span style="flex:1;font-size:.9rem">' + it.nombre + '</span>' +
+      '<input type="number" step="1" min="1" value="' + it.cantidad + '" style="width:60px" onchange="updateFrenteItem(' + it.id + ',\'cantidad\',this.value)">' +
+      '<span class="piece-label no-print">x</span>' +
+      '<input type="number" step="0.01" class="no-print" value="' + it.precio + '" style="width:120px" onchange="updateFrenteItem(' + it.id + ',\'precio\',this.value)">' +
+      '<span class="piece-result no-print">' + fmt(it.precio * it.cantidad) + '</span>' +
+      '<button class="remove-btn" onclick="removeFrenteItem(' + it.id + ')">×</button>' +
+      '</div>';
+  });
+}
+
+function updateFrenteItem(id, field, val) {
+  const it = frenteItems.find(x => x.id === id);
+  if (it) it[field] = parseFloat(val) || 0;
+  renderFrenteItems();
+  recalc();
+}
+
 function addItemFromSelect() {
   const sel = document.getElementById('item-select');
   const idx = sel.value;
@@ -784,9 +975,9 @@ function renderItemsPresupuesto() {
     cont.innerHTML += '<div class="piece-row">' +
       '<span style="flex:1;font-size:.9rem">' + it.nombre + '</span>' +
       '<input type="number" step="1" min="1" value="' + it.cantidad + '" style="width:60px" onchange="updateItemP(' + it.id + ',\'cantidad\',this.value)">' +
-      '<span class="piece-label">x</span>' +
-      '<input type="number" step="0.01" value="' + it.precio + '" style="width:120px" onchange="updateItemP(' + it.id + ',\'precio\',this.value)">' +
-      '<span class="piece-result">' + fmt(it.precio * it.cantidad) + '</span>' +
+      '<span class="piece-label no-print">x</span>' +
+      '<input type="number" step="0.01" class="no-print" value="' + it.precio + '" style="width:120px" onchange="updateItemP(' + it.id + ',\'precio\',this.value)">' +
+      '<span class="piece-result no-print">' + fmt(it.precio * it.cantidad) + '</span>' +
       '<button class="remove-btn" onclick="removeItemP(' + it.id + ')">×</button>' +
       '</div>';
   });
@@ -824,9 +1015,9 @@ function renderCustomItems() {
     cont.innerHTML += '<div class="piece-row">' +
       '<span style="flex:1;font-size:.9rem">' + it.nombre + '</span>' +
       '<input type="number" step="1" min="1" value="' + it.cantidad + '" style="width:60px" onchange="updateCustom(' + it.id + ',\'cantidad\',this.value)">' +
-      '<span class="piece-label">x</span>' +
-      '<input type="number" step="0.01" value="' + it.precio + '" style="width:120px" onchange="updateCustom(' + it.id + ',\'precio\',this.value)">' +
-      '<span class="piece-result">' + fmt(it.precio * it.cantidad) + '</span>' +
+      '<span class="piece-label no-print">x</span>' +
+      '<input type="number" step="0.01" class="no-print" value="' + it.precio + '" style="width:120px" onchange="updateCustom(' + it.id + ',\'precio\',this.value)">' +
+      '<span class="piece-result no-print">' + fmt(it.precio * it.cantidad) + '</span>' +
       '<button class="remove-btn" onclick="removeCustomItem(' + it.id + ')">×</button>' +
       '</div>';
   });
@@ -865,30 +1056,74 @@ function recalc() {
   zocaloPiezas.forEach(p => { zocaloM2 += p.largo * p.alto; });
   const costoZocalo = zocaloM2 * precioARS;
 
-  // Items
-  let costoItems = 0;
-  itemsPresupuesto.forEach(it => { costoItems += it.precio * it.cantidad; });
-  customItems.forEach(it => { costoItems += it.precio * it.cantidad; });
+  // Frente doble: igual que el zocalo, area (largo × alto) al precio del m²
+  let frenteM2 = 0;
+  frentePiezas.forEach(p => { frenteM2 += p.largo * p.alto; });
+  const costoFrente = frenteM2 * precioARS;
 
-  const total = costoMesada + costoZocalo + costoItems;
+  // Items
+  const allIt = getAllItems();
+  let costoItems = 0;
+  allIt.forEach(it => { costoItems += it.precio * it.cantidad; });
+
+  const totalCalculado = costoMesada + costoZocalo + costoFrente + costoItems;
+  const total = totalFinalOf(totalCalculado);
 
   // Render resumen
   const lines = document.getElementById('resumen-lines');
   let html = '';
-  html += '<div class="total-line"><span>Mesada</span><span>' + fmt(costoMesada) + '</span></div>';
+  // En el imprimible se ve el desglose de conceptos pero no los importes: como el
+  // TOTAL se puede editar a mano, las partes no cerrarian con la suma.
+  html += '<div class="total-line"><span>Mesada</span><span class="no-print">' + fmt(costoMesada) + '</span></div>';
   if (zocaloM2 > 0) {
-    html += '<div class="total-line"><span>Zocalo</span><span>' + fmt(costoZocalo) + '</span></div>';
+    html += '<div class="total-line"><span>Zocalo</span><span class="no-print">' + fmt(costoZocalo) + '</span></div>';
+  }
+  if (frenteM2 > 0) {
+    html += '<div class="total-line"><span>Frente doble</span><span class="no-print">' + fmt(costoFrente) + '</span></div>';
+  }
+  // La tarjeta de frente doble solo se imprime si tiene algo cargado
+  document.getElementById('card-frente').classList.toggle('print-hide', frenteM2 === 0 && frenteItems.length === 0);
+
+  allIt.forEach(it => {
+    html += '<div class="total-line"><span>' + it.nombre + ' ×' + it.cantidad + '</span><span class="no-print">' + fmt(it.precio * it.cantidad) + '</span></div>';
+  });
+
+  if (totalOverride !== null && Math.round(totalOverride) !== Math.round(totalCalculado)) {
+    html += '<div class="total-line no-print" style="font-size:.8rem;opacity:.85"><span>Total calculado</span><span>' + fmt(totalCalculado) + '</span></div>';
   }
 
-  itemsPresupuesto.forEach(it => {
-    html += '<div class="total-line"><span>' + it.nombre + ' ×' + it.cantidad + '</span><span>' + fmt(it.precio * it.cantidad) + '</span></div>';
-  });
-  customItems.forEach(it => {
-    html += '<div class="total-line"><span>' + it.nombre + ' ×' + it.cantidad + '</span><span>' + fmt(it.precio * it.cantidad) + '</span></div>';
-  });
-
-  html += '<div class="total-line grand"><span>TOTAL</span><span>' + fmt(total) + '</span></div>';
+  html += '<div class="total-line grand"><span>TOTAL</span>' +
+    '<span class="total-edit">' +
+      '<span class="only-print">' + fmt(total) + '</span>' +
+      '<input type="number" step="1" id="total-final" class="total-input no-print" value="' + Math.round(total) + '" onchange="setTotalFinal(this.value)" title="Editable: redondee el total si lo necesita">' +
+      (totalOverride !== null ? '<button class="btn-reset-total no-print" onclick="resetTotalFinal()" title="Volver al total calculado">↺</button>' : '') +
+    '</span></div>';
   lines.innerHTML = html;
+}
+
+// Items del presupuesto en el mismo orden que las secciones en pantalla
+function getAllItems() {
+  return [...frenteItems, ...itemsPresupuesto, ...customItems];
+}
+
+function syncSector() {
+  document.getElementById('print-sector').textContent = document.getElementById('sector').value.trim();
+}
+
+// Devuelve el total editado por el usuario, o el calculado si no lo editó
+function totalFinalOf(calculado) {
+  return totalOverride !== null ? totalOverride : calculado;
+}
+
+function setTotalFinal(val) {
+  const v = parseFloat(val);
+  totalOverride = isNaN(v) ? null : v;
+  recalc();
+}
+
+function resetTotalFinal() {
+  totalOverride = null;
+  recalc();
 }
 
 // ========== SAVE / CLEAR / PRINT ==========
@@ -910,25 +1145,32 @@ function guardarPresupuesto() {
   zocaloPiezas.forEach(p => { zocaloM2 += p.largo * p.alto; });
   const costoZocalo = zocaloM2 * precioARS;
 
+  let frenteM2 = 0;
+  frentePiezas.forEach(p => { frenteM2 += p.largo * p.alto; });
+  const costoFrente = frenteM2 * precioARS;
+
   let costoItems = 0;
-  const allItems = [...itemsPresupuesto, ...customItems];
+  const allItems = getAllItems();
   allItems.forEach(it => { costoItems += it.precio * it.cantidad; });
 
-  const total = costoMesada + costoZocalo + costoItems;
+  const totalCalculado = costoMesada + costoZocalo + costoFrente + costoItems;
+  const total = totalFinalOf(totalCalculado);
 
   const todosMateriales = [{
     material: mat.nombre, categoria: mat.cat, espesor: mat.espesor,
     precioM2, moneda, tipoCambio: tc, precioARS_m2: precioARS,
-    costoMesada, costoZocalo, total
+    costoMesada, costoZocalo, costoFrente, total, totalCalculado
   }];
   materialesExtra.forEach(me => {
     const precioARSe = me.moneda === 'USD' ? me.precio * me.tc : me.precio;
     const cm = totalM2 * precioARSe;
     const cz = zocaloM2 * precioARSe;
+    const cf = frenteM2 * precioARSe;
     todosMateriales.push({
       material: me.nombre, categoria: me.cat, espesor: me.espesor,
       precioM2: me.precio, moneda: me.moneda, tipoCambio: me.tc, precioARS_m2: precioARSe,
-      costoMesada: cm, costoZocalo: cz, total: cm + cz + costoItems
+      costoMesada: cm, costoZocalo: cz, costoFrente: cf,
+      total: cm + cz + cf + costoItems, totalCalculado: cm + cz + cf + costoItems
     });
   });
 
@@ -936,6 +1178,7 @@ function guardarPresupuesto() {
     id: Date.now().toString(36) + Math.random().toString(36).substr(2,5),
     fecha: new Date().toISOString(),
     cliente,
+    sector: document.getElementById('sector').value.trim(),
     realizadoPor: document.getElementById('realizado-por').value.trim(),
     plazoEntrega: document.getElementById('plazo-entrega').value.trim(),
     material: mat.nombre,
@@ -946,13 +1189,22 @@ function guardarPresupuesto() {
     precioARS_m2: precioARS,
     mesadaPiezas: mesadaPiezas.map(p => ({largo:p.largo, ancho:p.ancho})),
     zocaloPiezas: zocaloPiezas.map(p => ({largo:p.largo, alto:p.alto})),
-    items: allItems.map(it => ({nombre:it.nombre, precio:it.precio, cantidad:it.cantidad})),
+    frentePiezas: frentePiezas.map(p => ({largo:p.largo, alto:p.alto})),
+    items: allItems.map(it => {
+      const o = {nombre:it.nombre, precio:it.precio, cantidad:it.cantidad};
+      if (it.largo != null && it.alto != null) { o.largo = it.largo; o.alto = it.alto; }
+      return o;
+    }),
     totalM2,
     zocaloM2,
+    frenteM2,
     costoMesada,
     costoZocalo,
+    costoFrente,
     costoItems,
     total,
+    totalCalculado,
+    totalEditado: totalOverride !== null && Math.round(totalOverride) !== Math.round(totalCalculado),
     todosMateriales
   };
 
@@ -964,6 +1216,8 @@ function guardarPresupuesto() {
 
 function limpiarPresupuesto() {
   document.getElementById('cliente-nombre').value = '';
+  document.getElementById('sector').value = '';
+  document.getElementById('print-sector').textContent = '';
   document.getElementById('realizado-por').value = '';
   document.getElementById('plazo-entrega').value = '';
   document.getElementById('mat-search').value = '';
@@ -975,12 +1229,17 @@ function limpiarPresupuesto() {
   document.getElementById('tc-box').classList.add('hidden');
   mesadaPiezas = [];
   zocaloPiezas = [];
+  frentePiezas = [];
+  frenteItems = [];
   itemsPresupuesto = [];
   customItems = [];
   materialesExtra = [];
+  totalOverride = null;
   renderMaterialesExtra();
   renderMesadaPiezas();
   renderZocaloPiezas();
+  renderFrentePiezas();
+  renderFrenteItems();
   renderItemsPresupuesto();
   renderCustomItems();
   recalc();
@@ -1017,7 +1276,7 @@ function renderMaterialesExtra() {
   ).join('');
 }
 
-function buildMaterialPage(mat) {
+function buildMaterialPage(mat, matIdx) {
   const precioARS = mat.moneda === 'USD' ? mat.precio * mat.tc : mat.precio;
   const cliente = document.getElementById('cliente-nombre').value.trim() || '';
   const realizadoPor = document.getElementById('realizado-por').value.trim();
@@ -1050,21 +1309,43 @@ function buildMaterialPage(mat) {
   });
   const costoZocalo = zocaloM2 * precioARS;
 
+  let frenteM2 = 0;
+  let frenteHtml = '';
+  frentePiezas.forEach((p, i) => {
+    frenteM2 += p.largo * p.alto;
+    frenteHtml += '<div class="piece-row">' +
+      '<span class="piece-label">#' + (i+1) + '</span>' +
+      '<input type="number" value="' + (p.largo||'') + '" readonly><span class="unit-m">m</span>' +
+      '<span class="piece-label">x</span>' +
+      '<input type="number" value="' + (p.alto||'') + '" readonly><span class="unit-m">m</span>' +
+    '</div>';
+  });
+  frenteItems.forEach(it => {
+    frenteHtml += '<div class="piece-row"><span style="flex:1;font-size:.9rem">' + it.nombre + '</span>' +
+      '<span class="piece-label">×' + it.cantidad + '</span></div>';
+  });
+  const costoFrente = frenteM2 * precioARS;
+
   let itemsHtml = '';
   let costoItems = 0;
-  [...itemsPresupuesto, ...customItems].forEach(it => {
+  getAllItems().forEach(it => {
     costoItems += it.precio * it.cantidad;
-    itemsHtml += '<div class="total-line"><span>' + it.nombre + ' ×' + it.cantidad + '</span><span>' + fmt(it.precio * it.cantidad) + '</span></div>';
+    itemsHtml += '<div class="total-line"><span>' + it.nombre + ' ×' + it.cantidad + '</span><span></span></div>';
   });
 
-  const total = costoMesada + costoZocalo + costoItems;
+  // El total editado a mano aplica solo al material principal (primera hoja)
+  const totalCalculado = costoMesada + costoZocalo + costoFrente + costoItems;
+  const total = matIdx === 0 ? totalFinalOf(totalCalculado) : totalCalculado;
 
-  let resumen = '<div class="total-line"><span>Mesada</span><span>' + fmt(costoMesada) + '</span></div>';
-  if (zocaloM2 > 0) resumen += '<div class="total-line"><span>Zocalo</span><span>' + fmt(costoZocalo) + '</span></div>';
+  // Desglose de conceptos, sin importes: el TOTAL puede venir redondeado a mano
+  let resumen = '<div class="total-line"><span>Mesada</span><span></span></div>';
+  if (zocaloM2 > 0) resumen += '<div class="total-line"><span>Zocalo</span><span></span></div>';
+  if (frenteM2 > 0) resumen += '<div class="total-line"><span>Frente doble</span><span></span></div>';
   resumen += itemsHtml;
   resumen += '<div class="total-line grand"><span>TOTAL</span><span>' + fmt(total) + '</span></div>';
 
-  const esc = s => String(s).replace(/"/g, '&quot;');
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const sector = document.getElementById('sector').value.trim();
   return '<div class="print-page">' +
     '<div class="header"><img src="logo.jpeg" alt="MarmoCult"></div>' +
     '<div class="card"><h2>Datos del Presupuesto</h2>' +
@@ -1082,11 +1363,13 @@ function buildMaterialPage(mat) {
         '<div></div>' +
       '</div>' +
     '</div>' +
+    '<div class="print-sector">' + esc(sector) + '</div>' +
     '<div class="card"><h2>Material</h2>' +
       '<div style="font-size:1rem;font-weight:600;margin-bottom:8px">' + mat.nombre + ' — ' + mat.cat + ' (' + mat.espesor + ')</div>' +
     '</div>' +
-    (mesadaHtml ? '<div class="card"><h2>Piezas de Mesada</h2>' + mesadaHtml + '</div>' : '') +
-    (zocaloHtml ? '<div class="card"><h2>Piezas de Zocalo</h2>' + zocaloHtml + '</div>' : '') +
+    (mesadaHtml ? '<div class="card"><h2>Mesada</h2>' + mesadaHtml + '</div>' : '') +
+    (zocaloHtml ? '<div class="card"><h2>Zocalo</h2>' + zocaloHtml + '</div>' : '') +
+    (frenteHtml ? '<div class="card"><h2>Frente doble</h2>' + frenteHtml + '</div>' : '') +
     '<div class="total-box"><h3>Resumen del Presupuesto</h3>' + resumen + '</div>' +
     '<div class="print-condiciones">' +
       '<p>El presupuesto puede variar sin previo aviso.</p>' +
@@ -1104,6 +1387,7 @@ function imprimirPresupuesto() {
   const orig = document.title;
   document.title = getPrintTitle();
   document.getElementById('plazo-text').textContent = document.getElementById('plazo-entrega').value.trim();
+  syncSector();
 
   if (materialesExtra.length > 0 && selectedMatIdx !== null) {
     const primary = materiales[selectedMatIdx];
@@ -1142,6 +1426,8 @@ function copiarPresupuesto() {
   let text = '*PRESUPUESTO - MarmoCult*\n';
   text += '📅 ' + new Date().toLocaleDateString('es-AR') + '\n';
   text += '👤 Cliente: ' + cliente + '\n';
+  const sector = document.getElementById('sector').value.trim();
+  if (sector) text += '📍 Sector: ' + sector + '\n';
   if (realizadoPor) text += '✏️ Realizado por: ' + realizadoPor + '\n';
   const plazoEntrega = document.getElementById('plazo-entrega').value.trim();
   if (plazoEntrega) text += '📦 Plazo de entrega: ' + plazoEntrega + '\n';
@@ -1167,7 +1453,17 @@ function copiarPresupuesto() {
     text += '  Subtotal: ' + fmt(zM2 * precioARS) + '\n\n';
   }
 
-  const allIt = [...itemsPresupuesto, ...customItems];
+  if (frentePiezas.length) {
+    text += '*Frente doble:*\n';
+    let fM2 = 0;
+    frentePiezas.forEach((p, i) => {
+      fM2 += p.largo * p.alto;
+      text += '  ' + (i+1) + '. ' + p.largo + 'm × ' + p.alto + 'm\n';
+    });
+    text += '  Subtotal: ' + fmt(fM2 * precioARS) + '\n\n';
+  }
+
+  const allIt = getAllItems();
   if (allIt.length) {
     text += '*Items:*\n';
     allIt.forEach(it => {
@@ -1179,8 +1475,9 @@ function copiarPresupuesto() {
   // Total
   let totalM2 = 0; mesadaPiezas.forEach(p => totalM2 += p.largo * p.ancho);
   let zM2 = 0; zocaloPiezas.forEach(p => zM2 += p.largo * p.alto);
+  let fM2 = 0; frentePiezas.forEach(p => fM2 += p.largo * p.alto);
   let costoItems = 0; allIt.forEach(it => costoItems += it.precio * it.cantidad);
-  const total = (totalM2 + zM2) * precioARS + costoItems;
+  const total = totalFinalOf((totalM2 + zM2 + fM2) * precioARS + costoItems);
   text += '*TOTAL: ' + fmt(total) + '*';
 
   navigator.clipboard.writeText(text).then(() => {
@@ -1237,6 +1534,19 @@ function renderPrecios() {
   });
   icont.innerHTML = html;
 
+  // Frente doble
+  const fcont = document.getElementById('precios-frentes');
+  html = '';
+  frentes.forEach((it, i) => {
+    html += '<div class="item-row" draggable="true" data-type="frente" data-i="' + i + '"' + dragAttrs() + '>' +
+      '<span class="drag-handle">⠿</span>' +
+      '<span class="item-name">' + it.nombre + '</span>' +
+      '<input type="number" class="price-input" step="0.01" value="' + it.precio + '" onchange="updateFrentePrecio(' + i + ',this.value)">' +
+      '<button class="remove-btn btn-sm" style="margin-left:4px" onclick="removeFrentePrecio(' + i + ')">×</button>' +
+      '</div>';
+  });
+  fcont.innerHTML = html || '<p style="color:var(--text4);font-size:.85rem">No hay items. Agregue uno debajo.</p>';
+
   // Otros
   const ocont = document.getElementById('precios-otros');
   html = '';
@@ -1291,7 +1601,7 @@ function onRowDrop(e) {
   const destIdx = parseInt(row.dataset.i, 10);
   const rect = row.getBoundingClientRect();
   const after = (e.clientY - rect.top) > rect.height / 2;
-  const arr = dragState.type === 'mat' ? materiales : dragState.type === 'item' ? items : otros;
+  const arr = {mat: materiales, item: items, frente: frentes, otro: otros}[dragState.type];
   const from = dragState.i;
   let to = after ? destIdx + 1 : destIdx;
   if (from === to || from === to - 1) { onRowDragEnd(e); return; }
@@ -1369,6 +1679,32 @@ function addNewItem() {
   document.getElementById('new-item-precio').value = '';
 }
 
+function updateFrentePrecio(i, val) {
+  frentes[i].precio = parseFloat(val) || 0;
+  savePrecios();
+  populateItemSelect();
+}
+
+function removeFrentePrecio(i) {
+  if (!confirm('Eliminar ' + frentes[i].nombre + '?')) return;
+  frentes.splice(i, 1);
+  savePrecios();
+  renderPrecios();
+  populateItemSelect();
+}
+
+function addNewFrente() {
+  const nombre = document.getElementById('new-frente-nombre').value.trim();
+  const precio = parseFloat(document.getElementById('new-frente-precio').value) || 0;
+  if (!nombre) return alert('Ingrese un nombre');
+  frentes.push({nombre, precio});
+  savePrecios();
+  renderPrecios();
+  populateItemSelect();
+  document.getElementById('new-frente-nombre').value = '';
+  document.getElementById('new-frente-precio').value = '';
+}
+
 function updateOtroPrecio(i, val) {
   otros[i].precio = parseFloat(val) || 0;
   savePrecios();
@@ -1395,9 +1731,686 @@ function addNewOtro() {
   document.getElementById('new-otro-precio').value = '';
 }
 
+// ========== IMPORT DE PRECIOS DESDE DOCUMENTO ==========
+// Tres origenes (.doc binario, .docx, texto pegado) convergen en texto plano.
+// De ahi en adelante el pipeline es comun: parsePriceRows -> matchRows -> preview -> aplicar.
+
+const CP1252_HIGH = {0x80:'€',0x82:'‚',0x83:'ƒ',0x84:'„',0x85:'…',0x86:'†',0x87:'‡',0x88:'ˆ',0x89:'‰',0x8A:'Š',0x8B:'‹',0x8C:'Œ',0x8E:'Ž',0x91:'‘',0x92:'’',0x93:'“',0x94:'”',0x95:'•',0x96:'–',0x97:'—',0x98:'˜',0x99:'™',0x9A:'š',0x9B:'›',0x9C:'œ',0x9E:'ž',0x9F:'Ÿ'};
+
+// --- Contenedor CFB (OLE2) ---
+function cfbOpen(buf) {
+  const u8 = new Uint8Array(buf);
+  const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+  const sig = [0xD0,0xCF,0x11,0xE0,0xA1,0xB1,0x1A,0xE1];
+  for (let i = 0; i < 8; i++) if (u8[i] !== sig[i]) throw new Error('No es un .doc valido (falta la firma OLE2)');
+
+  const secSize = 1 << dv.getUint16(0x1E, true);
+  const miniSecSize = 1 << dv.getUint16(0x20, true);
+  const numFatSectors = dv.getUint32(0x2C, true);
+  const firstDirSector = dv.getUint32(0x30, true);
+  const miniCutoff = dv.getUint32(0x38, true) || 4096;
+  const firstMiniFat = dv.getUint32(0x3C, true);
+  const firstDifat = dv.getUint32(0x44, true);
+  const numDifat = dv.getUint32(0x48, true);
+  const sectorOffset = s => (s + 1) * secSize;
+
+  // DIFAT -> sectores FAT
+  const fatSectors = [];
+  for (let i = 0; i < 109 && fatSectors.length < numFatSectors; i++) {
+    const s = dv.getUint32(0x4C + i * 4, true);
+    if (s === 0xFFFFFFFF) break;
+    fatSectors.push(s);
+  }
+  let difat = firstDifat;
+  const perDifat = secSize / 4 - 1;
+  for (let n = 0; n < numDifat && difat !== 0xFFFFFFFF && difat !== 0xFFFFFFFE; n++) {
+    const base = sectorOffset(difat);
+    for (let i = 0; i < perDifat && fatSectors.length < numFatSectors; i++) {
+      const s = dv.getUint32(base + i * 4, true);
+      if (s === 0xFFFFFFFF) break;
+      fatSectors.push(s);
+    }
+    difat = dv.getUint32(base + perDifat * 4, true);
+  }
+
+  const perFat = secSize / 4;
+  const fat = new Uint32Array(fatSectors.length * perFat);
+  fatSectors.forEach((fs, k) => {
+    const base = sectorOffset(fs);
+    for (let i = 0; i < perFat; i++) fat[k * perFat + i] = dv.getUint32(base + i * 4, true);
+  });
+
+  function chain(start) {
+    const out = [], seen = new Set();
+    let s = start;
+    while (s !== 0xFFFFFFFE && s !== 0xFFFFFFFF && s < fat.length) {
+      if (seen.has(s)) throw new Error('Cadena FAT circular');
+      seen.add(s); out.push(s); s = fat[s];
+    }
+    return out;
+  }
+
+  function readChain(start, size) {
+    const out = new Uint8Array(size);
+    let done = 0;
+    for (const s of chain(start)) {
+      if (done >= size) break;
+      const n = Math.min(secSize, size - done);
+      out.set(u8.subarray(sectorOffset(s), sectorOffset(s) + n), done);
+      done += n;
+    }
+    return out;
+  }
+
+  const dirChain = chain(firstDirSector);
+  const dirBytes = readChain(firstDirSector, dirChain.length * secSize);
+  const ddv = new DataView(dirBytes.buffer, dirBytes.byteOffset, dirBytes.byteLength);
+  const entries = [];
+  for (let off = 0; off + 128 <= dirBytes.length; off += 128) {
+    const type = dirBytes[off + 0x42];
+    if (type === 0) continue;
+    const nameLen = ddv.getUint16(off + 0x40, true);
+    let name = '';
+    for (let i = 0; i + 1 < nameLen; i += 2) {
+      const c = ddv.getUint16(off + i, true);
+      if (c) name += String.fromCharCode(c);
+    }
+    entries.push({name, type, start: ddv.getUint32(off + 0x74, true), size: ddv.getUint32(off + 0x78, true)});
+  }
+
+  const root = entries.find(e => e.type === 5);
+  let miniFat = null, miniStream = null;
+  function ensureMini() {
+    if (miniFat) return;
+    const mfs = chain(firstMiniFat);
+    const mf = new Uint32Array(mfs.length * perFat);
+    mfs.forEach((fs, k) => {
+      const base = sectorOffset(fs);
+      for (let i = 0; i < perFat; i++) mf[k * perFat + i] = dv.getUint32(base + i * 4, true);
+    });
+    miniFat = mf;
+    miniStream = readChain(root.start, root.size);
+  }
+
+  function readStream(name) {
+    const e = entries.find(x => x.name === name && x.type === 2);
+    if (!e) return null;
+    if (e.size < miniCutoff) {
+      ensureMini();
+      const out = new Uint8Array(e.size);
+      let s = e.start, done = 0;
+      while (s !== 0xFFFFFFFE && s !== 0xFFFFFFFF && done < e.size) {
+        const n = Math.min(miniSecSize, e.size - done);
+        out.set(miniStream.subarray(s * miniSecSize, s * miniSecSize + n), done);
+        done += n; s = miniFat[s];
+      }
+      return out;
+    }
+    return readChain(e.start, e.size);
+  }
+
+  return {readStream, entries};
+}
+
+// Convierte los caracteres de control de Word en separadores utiles.
+// El 0x07 (fin de celda) es el que preserva las columnas de las tablas.
+function mapWordChar(c) {
+  if (c === 0x07) return '\t';
+  if (c === 0x0D || c === 0x0B || c === 0x0C) return '\n';
+  if (c === 0x1E || c === 0x1F) return '-';
+  if (c === 0xA0) return ' ';
+  if (c === 0x13 || c === 0x14 || c === 0x15) return '';
+  if (c === 0x01 || c === 0x02 || c === 0x08) return '';
+  if (c < 0x20 && c !== 0x09) return '';
+  return null;
+}
+
+// --- .doc binario (Word 97-2003) ---
+function readDocBinary(buf) {
+  const cfb = cfbOpen(buf);
+  const wd = cfb.readStream('WordDocument');
+  if (!wd) throw new Error('El archivo no contiene un documento Word');
+  const wdv = new DataView(wd.buffer, wd.byteOffset, wd.byteLength);
+  if (wdv.getUint16(0x00, true) !== 0xA5EC) throw new Error('Firma FIB invalida');
+
+  const tableName = (wdv.getUint16(0x0A, true) & 0x0200) ? '1Table' : '0Table';
+  const tbl = cfb.readStream(tableName) || cfb.readStream(tableName === '1Table' ? '0Table' : '1Table');
+  if (!tbl) throw new Error('Falta el stream ' + tableName);
+  const tdv = new DataView(tbl.buffer, tbl.byteOffset, tbl.byteLength);
+
+  // fcClx = FibBase(32)+csw(2)+rgW97(28)+cslw(2)+rgLw97(88)+cbRgFcLcb(2) + campo 33*8 = 0x1A2
+  const fcClx = wdv.getUint32(0x01A2, true);
+  const lcbClx = wdv.getUint32(0x01A6, true);
+  if (lcbClx === 0 || fcClx + lcbClx > tbl.length) throw new Error('No pude ubicar la tabla de texto (CLX)');
+
+  let p = fcClx, plcOff = -1, plcLen = 0;
+  const end = fcClx + lcbClx;
+  while (p < end) {
+    const t = tbl[p];
+    if (t === 0x01) { p += 3 + tdv.getUint16(p + 1, true); }        // Prc: saltear
+    else if (t === 0x02) { plcLen = tdv.getUint32(p + 1, true); plcOff = p + 5; break; }
+    else break;
+  }
+  if (plcOff < 0) throw new Error('CLX sin tabla de fragmentos (PlcPcd)');
+
+  const n = (plcLen - 4) / 12;
+  if (!Number.isInteger(n) || n <= 0) throw new Error('PlcPcd con tamano inesperado');
+  const cps = [];
+  for (let i = 0; i <= n; i++) cps.push(tdv.getUint32(plcOff + i * 4, true));
+  const pcdBase = plcOff + (n + 1) * 4;
+
+  let out = '';
+  for (let i = 0; i < n; i++) {
+    const fcRaw = tdv.getUint32(pcdBase + i * 8 + 2, true);
+    const chars = cps[i + 1] - cps[i];
+    if (fcRaw & 0x40000000) {              // texto de 8 bits (CP1252)
+      const off = (fcRaw & 0x3FFFFFFF) >>> 1;
+      for (let k = 0; k < chars; k++) {
+        const b = wd[off + k];
+        if (b === undefined) break;
+        const m = mapWordChar(b);
+        out += m !== null ? m : (b >= 0x80 && b <= 0x9F ? (CP1252_HIGH[b] || '') : String.fromCharCode(b));
+      }
+    } else {                                // UTF-16LE
+      const off = fcRaw & 0x3FFFFFFF;
+      for (let k = 0; k < chars; k++) {
+        const c = wdv.getUint16(off + k * 2, true);
+        const m = mapWordChar(c);
+        out += m !== null ? m : String.fromCharCode(c);
+      }
+    }
+  }
+  return out;
+}
+
+// --- .docx (OOXML): ZIP + inflate nativo ---
+async function inflateRaw(bytes) {
+  const ds = new DecompressionStream('deflate-raw');
+  const w = ds.writable.getWriter();
+  w.write(bytes); w.close();
+  const parts = [], r = ds.readable.getReader();
+  for (;;) { const {done, value} = await r.read(); if (done) break; parts.push(value); }
+  let len = 0; parts.forEach(p => len += p.length);
+  const out = new Uint8Array(len);
+  let o = 0; parts.forEach(p => { out.set(p, o); o += p.length; });
+  return out;
+}
+
+async function readDocxText(buf) {
+  const u8 = new Uint8Array(buf);
+  const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+  if (!(u8[0] === 0x50 && u8[1] === 0x4B)) throw new Error('No es un .docx valido (falta la firma ZIP)');
+
+  let eocd = -1;
+  for (let i = u8.length - 22; i >= 0 && i > u8.length - 65558; i--) {
+    if (dv.getUint32(i, true) === 0x06054B50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error('ZIP sin directorio central');
+  const nEntries = dv.getUint16(eocd + 10, true);
+  let p = dv.getUint32(eocd + 16, true);
+
+  for (let i = 0; i < nEntries; i++) {
+    if (dv.getUint32(p, true) !== 0x02014B50) break;
+    const method = dv.getUint16(p + 10, true);
+    const compSize = dv.getUint32(p + 20, true);
+    const nameLen = dv.getUint16(p + 28, true);
+    const extraLen = dv.getUint16(p + 30, true);
+    const commentLen = dv.getUint16(p + 32, true);
+    const localOff = dv.getUint32(p + 42, true);
+    let name = '';
+    for (let k = 0; k < nameLen; k++) name += String.fromCharCode(u8[p + 46 + k]);
+    if (name === 'word/document.xml') {
+      const dataOff = localOff + 30 + dv.getUint16(localOff + 26, true) + dv.getUint16(localOff + 28, true);
+      const raw = u8.subarray(dataOff, dataOff + compSize);
+      const xml = method === 0 ? raw : await inflateRaw(raw);
+      return xmlADocxTexto(new TextDecoder('utf-8').decode(xml));
+    }
+    p += 46 + nameLen + extraLen + commentLen;
+  }
+  throw new Error('El .docx no contiene word/document.xml');
+}
+
+function xmlADocxTexto(xml) {
+  return xml
+    .replace(/<w:tab\b[^>]*\/>/g, '\t')
+    .replace(/<w:br\b[^>]*\/>/g, '\n')
+    .replace(/<\/w:p>/g, '\n')
+    .replace(/<\/w:tc>/g, '\t')
+    .replace(/<\/w:tr>/g, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+    .replace(/&#(\d+);/g, (_, d) => String.fromCharCode(+d))
+    .replace(/&amp;/g, '&');
+}
+
+// --- Parseo de filas ---
+const RE_PRECIO  = /(USD|U\$S|\$)\s*(\d[\d.,]*)\s*$/i;
+const RE_ESPESOR = /(\d+(?:[.,]\d+)?)\s*(CM|MM)\b/i;
+const RE_MEDIDAS = /\d+(?:[.,]\d+)?\s*(?:dm\s*)?x\s*\d+(?:[.,]\d+)?(?:\s*x\s*\d+(?:[.,]\d+)?)?/i;
+
+const CAT_ALIAS = [
+  ['GRANITOS NACIONALES', 'Granitos Nacionales'],
+  ['GRANITOS IMPORTADOS', 'Granitos Importados'],
+  ['MARMOLES IMPORTADOS', 'Marmoles Importados'],
+  ['PURASTONE PRIMA',     'Pura Stone Prima'],
+  ['PURASTONE',           'Purastone'],
+];
+
+// El orden importa: "ESQUINERAS DOBLES" se prueba antes que "DOBLES".
+const BACHA_SECCIONES = [
+  ['ESQUINERA', 'ESQUINERA'],
+  ['LAVADERO',  'LAVADERO'],
+  ['SIMPLES',   'SIMPLE'],
+  ['DOBLES',    'DOBLE'],
+  ['TRIPLE',    'TRIPLE'],
+  ['VANITORY',  'VANITORY'],
+  ['ACCESORIOS','@ACC'],
+];
+
+function normKey(s) {
+  return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toUpperCase()
+    .replace(/[‒-―−]/g, '-')
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/[^A-Z0-9 ]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function parseMonto(s) {
+  return parseFloat(String(s).replace(/\s/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+}
+
+function limpiarNom(s) {
+  return String(s).replace(/[‒-―−]/g, '-').replace(/\s+/g, ' ').trim().replace(/[-\s]+$/, '').trim();
+}
+
+function oracionNom(s) {
+  const t = String(s).toLowerCase().trim();
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+function parsePriceRows(texto) {
+  const filas = [];
+  let catMaterial = '', seccionBacha = null, prefijoBacha = '';
+
+  for (const raw of String(texto).split('\n')) {
+    const linea = raw.replace(/\s+$/, '');
+    if (!linea.trim()) continue;
+    const mPrecio = linea.trim().match(RE_PRECIO);
+
+    if (!mPrecio) {
+      const k = normKey(linea);
+      if (!k) continue;
+      if (/^PILETAS\b/.test(k)) { seccionBacha = ''; prefijoBacha = ''; continue; }
+      const sec = BACHA_SECCIONES.find(([kw]) => k.includes(kw));
+      if (sec) { seccionBacha = sec[0]; prefijoBacha = sec[1]; continue; }
+      const cat = CAT_ALIAS.find(([kw]) => k === kw);
+      if (cat) { catMaterial = cat[1]; seccionBacha = null; continue; }
+      // Encabezado desconocido: se toma como categoria nueva si parece un titulo
+      const tabs = (linea.match(/\t/g) || []).length;
+      if (tabs < 2 && k.split(' ').length <= 8 && !/PRECIO|MEDIDAS|DESCRIPCION|MODELO/.test(k)) {
+        catMaterial = linea.trim().replace(/\t+/g, ' ');
+        seccionBacha = null;
+      }
+      continue;
+    }
+
+    const moneda = /USD|U\$S/i.test(mPrecio[1]) ? 'USD' : 'ARS';
+    const precio = parseMonto(mPrecio[2]);
+    const t = linea.trim();
+    const sinPrecio = t.slice(0, t.length - mPrecio[0].length);
+    const cols = sinPrecio.split(/\t+/).map(s => s.trim()).filter(Boolean);
+    const mEsp = sinPrecio.match(RE_ESPESOR);
+
+    if (mEsp) {
+      let cat = catMaterial, nc = cols.slice();
+      const inline = CAT_ALIAS.find(([kw]) => normKey(nc[0] || '') === kw);
+      if (inline) { cat = inline[1]; nc = nc.slice(1); }
+      filas.push({
+        destino:'materiales', cat,
+        nombre: limpiarNom(nc.join(' ').replace(RE_ESPESOR, '')).toUpperCase(),
+        espesor: (mEsp[1] + ' ' + mEsp[2].toUpperCase()).replace(',', '.'),
+        precio, moneda, linea:t
+      });
+      continue;
+    }
+
+    if (seccionBacha !== null) {
+      // La seccion decide el formato. En ACCESORIOS nunca se buscan medidas: hay
+      // descripciones como "REJILLA ENROLLABLE RECT 32X42" que las imitan.
+      const esAcc = prefijoBacha === '@ACC';
+      // Las medidas pueden venir separadas por tabs o por espacios, asi que se
+      // buscan en la linea entera y el codigo es todo lo que va antes.
+      const mMed = esAcc ? null : sinPrecio.match(RE_MEDIDAS);
+      let nombre;
+      if (mMed) {
+        const codigo = limpiarNom(sinPrecio.slice(0, mMed.index).replace(/\t+/g, ' '));
+        nombre = ((prefijoBacha ? prefijoBacha + ' ' : '') + codigo).toUpperCase() + ' (' + mMed[0].replace(/\s+/g, ' ') + ')';
+      } else {
+        const desc = cols.slice(1).join(' ');
+        nombre = limpiarNom(desc ? cols[0] + ' - ' + desc : (cols[0] || '')).toUpperCase();
+      }
+      filas.push({destino:'otros', nombre, espesor:'', cat:'', precio, moneda, linea:t});
+      continue;
+    }
+
+    filas.push({destino:'items', nombre:oracionNom(limpiarNom(cols.join(' '))), espesor:'', cat:'', precio, moneda, linea:t});
+  }
+  return filas;
+}
+
+// --- Matching ---
+function levDist(a, b) {
+  if (a === b) return 0;
+  const m = a.length, n = b.length;
+  if (!m) return n;
+  if (!n) return m;
+  let prev = Array.from({length: n + 1}, (_, i) => i);
+  for (let i = 1; i <= m; i++) {
+    const cur = [i];
+    for (let j = 1; j <= n; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i-1] === b[j-1] ? 0 : 1));
+    }
+    prev = cur;
+  }
+  return prev[n];
+}
+
+function simRatio(a, b) {
+  const max = Math.max(a.length, b.length);
+  return max === 0 ? 1 : 1 - levDist(a, b) / max;
+}
+
+function digitosDe(k) {
+  return (k.match(/\d+/g) || []).join(' ');
+}
+
+// Levenshtein sobre el nombre completo NO sirve para codigos de producto: en esta
+// lista cada token es significativo. "SE 45" vs "SE 55" da 0.96 y "O 37 A" vs
+// "O 37 AT" da 0.96, y son articulos distintos. El difuso se limita entonces a un
+// unico token mal escrito: misma cantidad de tokens, misma numeracion, y un solo
+// token distinto que siga siendo reconocible. Cubre "TRAFORO"/"TRASFORO" y rechaza
+// todo lo demas, que cae como "nuevo" desmarcado (falla del lado seguro).
+function difusoCompatible(a, b) {
+  const ta = a ? a.split(' ') : [], tb = b ? b.split(' ') : [];
+  if (ta.length !== tb.length) return false;
+  if (digitosDe(a) !== digitosDe(b)) return false;
+  let dif = -1;
+  for (let i = 0; i < ta.length; i++) {
+    if (ta[i] === tb[i]) continue;
+    if (dif >= 0) return false;              // mas de un token distinto
+    dif = i;
+  }
+  if (dif < 0) return false;                 // identicos: lo resuelve el match exacto
+  const x = ta[dif], y = tb[dif];
+  return Math.min(x.length, y.length) >= 4 && simRatio(x, y) >= 0.75;
+}
+
+// Parte estable del nombre de una bacha: el codigo, sin prefijo ni medidas
+function codigoBacha(nombre) {
+  let k = normKey(nombre);
+  for (const [, pre] of BACHA_SECCIONES) {
+    if (pre && pre !== '@ACC' && k.startsWith(pre + ' ')) { k = k.slice(pre.length + 1); break; }
+  }
+  return k;
+}
+
+function listasImport() {
+  return {materiales, items, frentes, otros};
+}
+
+// Set vacio por cada lista, para llevar cuenta de los indices ya matcheados
+function usadosImport() {
+  const u = {};
+  Object.keys(listasImport()).forEach(k => u[k] = new Set());
+  return u;
+}
+
+function matchOneRow(f, listas, usados, i) {
+  const arr = listas[f.destino] || [];
+  const key = normKey(f.nombre);
+  let idx = arr.findIndex(e => normKey(e.nombre) === key);
+  let dudoso = false;
+
+  if (idx < 0 && f.destino === 'otros') {
+    const c = codigoBacha(f.nombre);
+    if (c) idx = arr.findIndex(e => codigoBacha(e.nombre) === c);
+  }
+  if (idx < 0) {
+    idx = arr.findIndex(e => difusoCompatible(key, normKey(e.nombre)));
+    if (idx >= 0) dudoso = true;   // todo match no exacto se marca para revisar
+  }
+
+  let estado, duplicadoDe = null, matchNombre = null;
+  if (idx < 0) {
+    estado = 'nuevo';
+  } else if (usados[f.destino].has(idx)) {
+    estado = 'nuevo'; duplicadoDe = arr[idx].nombre; idx = -1;   // gana la primera fila
+  } else {
+    usados[f.destino].add(idx);
+    matchNombre = arr[idx].nombre;
+    estado = Math.round(arr[idx].precio) === Math.round(f.precio) ? 'sin cambios' : 'actualiza';
+  }
+
+  return Object.assign({}, f, {
+    idx, estado, dudoso, matchNombre, duplicadoDe,
+    precioViejo: idx >= 0 ? arr[idx].precio : null,
+    incluir: estado === 'actualiza',   // politica conservadora: lo nuevo va desmarcado
+    id: 'imp' + i
+  });
+}
+
+function matchRows(filas) {
+  const listas = listasImport();
+  // Un agregado que ya vive en Frente doble se importa contra esa lista, no contra Agregados
+  filas.forEach(f => {
+    if (f.destino === 'items' && frentes.some(fr => normKey(fr.nombre) === normKey(f.nombre))) f.destino = 'frentes';
+  });
+  const usados = usadosImport();
+  return filas.map((f, i) => matchOneRow(f, listas, usados, i));
+}
+
+// --- Entradas ---
+let importFilas = [];
+
+function setImportStatus(msg, err) {
+  const el = document.getElementById('import-doc-status');
+  el.textContent = msg || '';
+  el.style.color = err ? '#dc3545' : 'var(--text4)';
+}
+
+function togglePegarTexto() {
+  document.getElementById('pegar-texto-box').classList.toggle('hidden');
+}
+
+function importarDocumento(evt) {
+  const file = evt.target.files[0];
+  evt.target.value = '';
+  if (!file) return;
+  const esDocx = /\.docx$/i.test(file.name);
+  setImportStatus('Leyendo ' + file.name + '...');
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      const texto = esDocx ? await readDocxText(e.target.result) : readDocBinary(e.target.result);
+      procesarTextoImport(texto, file.name);
+    } catch (err) {
+      setImportStatus('No pude leer el documento: ' + err.message + '. Probá con "o pegar texto".', true);
+    }
+  };
+  reader.onerror = () => setImportStatus('No pude leer el archivo.', true);
+  reader.readAsArrayBuffer(file);
+}
+
+function procesarTextoPegado() {
+  const t = document.getElementById('pegar-texto').value;
+  if (!t.trim()) return setImportStatus('Pegue el texto del documento primero.', true);
+  procesarTextoImport(t, 'texto pegado');
+}
+
+function procesarTextoImport(texto, origen) {
+  const filas = parsePriceRows(texto);
+  if (!filas.length) {
+    return setImportStatus('No encontré filas con precio en ' + origen + '. Revisá el formato o probá "o pegar texto".', true);
+  }
+  importFilas = matchRows(filas);
+  setImportStatus(filas.length + ' filas leídas de ' + origen + '.');
+  renderPreviewImport();
+}
+
+// --- Preview ---
+function rematchImport() {
+  const listas = listasImport();
+  const usados = usadosImport();
+  importFilas = importFilas.map((f, i) => {
+    const m = matchOneRow(f, listas, usados, i);
+    m.id = f.id;
+    m.incluirTocado = f.incluirTocado;
+    if (f.incluirTocado) m.incluir = f.incluir;   // respeta lo que marcó el usuario
+    return m;
+  });
+}
+
+function setImportCampo(id, campo, val) {
+  const f = importFilas.find(x => x.id === id);
+  if (!f) return;
+  if (campo === 'incluir') { f.incluir = val; f.incluirTocado = true; renderPreviewImport(); return; }
+  f[campo] = (campo === 'precio') ? (parseFloat(val) || 0) : val;
+  rematchImport();
+  renderPreviewImport();
+}
+
+function marcarTodosImport(v) {
+  importFilas.forEach(f => {
+    if (v && f.estado === 'sin cambios') return;   // no tiene sentido marcar lo que no cambia
+    f.incluir = v; f.incluirTocado = true;
+  });
+  renderPreviewImport();
+}
+
+// Solo se reportan faltantes de las listas que el documento efectivamente toca
+function faltantesImport() {
+  const listas = listasImport();
+  const tocadas = new Set(importFilas.map(f => f.destino));
+  const usados = usadosImport();
+  importFilas.forEach(f => { if (f.idx >= 0) usados[f.destino].add(f.idx); });
+  const out = [];
+  Object.keys(listas).forEach(k => {
+    if (!tocadas.has(k)) return;
+    listas[k].forEach((e, i) => { if (!usados[k].has(i)) out.push(NOMBRE_LISTA[k] + ': ' + e.nombre); });
+  });
+  return out;
+}
+
+const NOMBRE_LISTA = {materiales:'Materiales', items:'Agregados', frentes:'Frente doble', otros:'Bachas'};
+
+function renderPreviewImport() {
+  const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const n = e => importFilas.filter(f => f.estado === e).length;
+  const marcadas = importFilas.filter(f => f.incluir).length;
+  const faltan = faltantesImport();
+
+  let filas = '';
+  importFilas.forEach(f => {
+    let estado;
+    if (f.estado === 'actualiza') {
+      estado = '<span class="imp-viejo">' + fmt(f.precioViejo) + '</span> → <strong>' + fmt(f.precio) + '</strong>';
+    } else if (f.estado === 'sin cambios') {
+      estado = '<span style="color:var(--text5)">sin cambios</span>';
+    } else if (f.duplicadoDe) {
+      estado = '<span class="badge badge-dup">duplicado</span> <small>ya matcheó «' + esc(f.duplicadoDe) + '»</small>';
+    } else {
+      estado = '<span class="badge badge-nuevo">nuevo</span>';
+    }
+    if (f.dudoso) estado += ' <span class="badge badge-dudoso" title="Revisá que sea el item correcto">dudoso</span> <small>→ «' + esc(f.matchNombre) + '»</small>';
+
+    const esMat = f.destino === 'materiales';
+    filas += '<tr class="' + (f.incluir ? '' : 'off') + '">' +
+      '<td><input type="checkbox" style="width:auto" ' + (f.incluir ? 'checked' : '') + ' onchange="setImportCampo(\'' + f.id + '\',\'incluir\',this.checked)"></td>' +
+      '<td><select onchange="setImportCampo(\'' + f.id + '\',\'destino\',this.value)">' +
+        Object.keys(NOMBRE_LISTA).map(k => '<option value="' + k + '"' + (f.destino===k?' selected':'') + '>' + NOMBRE_LISTA[k] + '</option>').join('') +
+      '</select></td>' +
+      '<td><input type="text" value="' + esc(f.nombre) + '" style="width:100%" onchange="setImportCampo(\'' + f.id + '\',\'nombre\',this.value)"></td>' +
+      '<td>' + (esMat
+        ? '<input type="text" value="' + esc(f.cat) + '" placeholder="categoria" style="width:120px" onchange="setImportCampo(\'' + f.id + '\',\'cat\',this.value)">' +
+          '<input type="text" value="' + esc(f.espesor) + '" placeholder="espesor" style="width:70px" onchange="setImportCampo(\'' + f.id + '\',\'espesor\',this.value)">'
+        : '<span style="color:var(--text5)">—</span>') + '</td>' +
+      '<td><input type="number" step="0.01" value="' + f.precio + '" style="width:110px" onchange="setImportCampo(\'' + f.id + '\',\'precio\',this.value)"></td>' +
+      '<td>' + (esMat ? '<span class="badge ' + (f.moneda==='USD'?'badge-usd':'badge-ars') + '">' + f.moneda + '</span>' : '<span style="color:var(--text5)">ARS</span>') + '</td>' +
+      '<td>' + estado + '</td>' +
+      '</tr>';
+  });
+
+  const html = '<div class="modal-overlay" onclick="if(event.target===this)cerrarPreviewImport()">' +
+    '<div class="modal modal-wide">' +
+    '<button class="modal-close" onclick="cerrarPreviewImport()">×</button>' +
+    '<h2>Preview del import</h2>' +
+    '<div class="imp-sum">' +
+      '<span><strong>' + n('actualiza') + '</strong> actualizan precio</span>' +
+      '<span><strong>' + n('sin cambios') + '</strong> sin cambios</span>' +
+      '<span><strong>' + n('nuevo') + '</strong> nuevas (desmarcadas)</span>' +
+      '<span><strong>' + faltan.length + '</strong> de la app no están en el documento</span>' +
+    '</div>' +
+    '<div class="btn-group" style="margin-top:0;margin-bottom:8px">' +
+      '<button class="btn btn-outline btn-sm" onclick="marcarTodosImport(true)">Marcar todas</button>' +
+      '<button class="btn btn-outline btn-sm" onclick="marcarTodosImport(false)">Desmarcar todas</button>' +
+    '</div>' +
+    '<div class="imp-scroll"><table class="imp-tabla"><thead><tr>' +
+      '<th></th><th>Destino</th><th>Nombre</th><th>Cat. / Espesor</th><th>Precio</th><th>Mon.</th><th>Estado</th>' +
+    '</tr></thead><tbody>' + filas + '</tbody></table></div>' +
+    (faltan.length ? '<div class="imp-faltantes">Estos items de la app no aparecen en el documento. <strong>No se borran</strong>, es solo un aviso:<ul><li>' + faltan.map(esc).join('</li><li>') + '</li></ul></div>' : '') +
+    '<div class="btn-group" style="margin-top:16px">' +
+      '<button class="btn btn-primary" onclick="aplicarImport()"' + (marcadas ? '' : ' disabled') + '>Aceptar (' + marcadas + ' cambios)</button>' +
+      '<button class="btn btn-secondary" onclick="cerrarPreviewImport()">Cancelar</button>' +
+    '</div>' +
+    '</div></div>';
+
+  document.getElementById('modal-container').innerHTML = html;
+}
+
+function cerrarPreviewImport() {
+  importFilas = [];
+  document.getElementById('modal-container').innerHTML = '';
+}
+
+function aplicarImport() {
+  const listas = listasImport();
+  let act = 0, ins = 0;
+
+  // Primero las actualizaciones por indice, antes de que las inserciones los corran
+  importFilas.filter(f => f.incluir && f.idx >= 0).forEach(f => {
+    listas[f.destino][f.idx].precio = f.precio;
+    act++;
+  });
+
+  importFilas.filter(f => f.incluir && f.idx < 0).forEach(f => {
+    if (!f.nombre.trim()) return;
+    if (f.destino === 'materiales') {
+      const cat = (f.cat || '').trim() || 'Sin categoria';
+      let at = materiales.length;
+      for (let i = materiales.length - 1; i >= 0; i--) {
+        if (materiales[i].cat === cat) { at = i + 1; break; }
+      }
+      materiales.splice(at, 0, {cat, nombre:f.nombre.trim(), espesor:(f.espesor||'').trim(), precio:f.precio, moneda:f.moneda});
+    } else {
+      listas[f.destino].push({nombre:f.nombre.trim(), precio:f.precio});
+    }
+    ins++;
+  });
+
+  savePrecios();
+  renderPrecios();
+  populateItemSelect();
+  cerrarPreviewImport();
+  setImportStatus('Aplicado: ' + act + ' precios actualizados, ' + ins + ' items agregados.');
+  alert('Listo.\n' + act + ' precios actualizados\n' + ins + ' items agregados');
+}
+
 // ========== EXPORT/IMPORT PRECIOS ==========
 function exportPrecios() {
-  const data = JSON.stringify({materiales, items, otros}, null, 2);
+  const data = JSON.stringify({materiales, items, frentes, otros}, null, 2);
   downloadJSON(data, 'marmocult_precios_' + dateStr() + '.json');
 }
 
@@ -1419,6 +2432,13 @@ function importPrecios(evt) {
         data.items.forEach(ni => {
           if (!items.find(it => it.nombre === ni.nombre)) {
             items.push(ni);
+          }
+        });
+      }
+      if (data.frentes) {
+        data.frentes.forEach(nf => {
+          if (!frentes.find(it => it.nombre === nf.nombre)) {
+            frentes.push(nf);
           }
         });
       }
@@ -1488,15 +2508,40 @@ function verDetalle(id) {
   if (!p) return;
   const fecha = new Date(p.fecha).toLocaleDateString('es-AR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
 
+  // Materiales con el precio y el tipo de cambio que se uso el dia del presupuesto
+  const mats = (p.todosMateriales && p.todosMateriales.length) ? p.todosMateriales : [{
+    material: p.material, categoria: p.categoria, espesor: p.espesor,
+    precioM2: p.precioM2, moneda: p.moneda, tipoCambio: p.tipoCambio, precioARS_m2: p.precioARS_m2
+  }];
+  const tcUsado = mats.filter(m => m.moneda === 'USD' && m.tipoCambio).map(m => m.tipoCambio);
+
+  let matHtml = '<h3 style="margin:12px 0 8px;color:var(--accent)">Material y precios del dia</h3>' +
+    '<table><thead><tr><th>Material</th><th>Precio m²</th><th>TC del dia</th><th>Precio m² (ARS)</th></tr></thead><tbody>';
+  mats.forEach(m => {
+    const mon = m.moneda || 'ARS';
+    const pm2 = m.precioM2 != null ? m.precioM2 : 0;
+    const ars = m.precioARS_m2 != null ? m.precioARS_m2 : (mon === 'USD' ? pm2 * (m.tipoCambio || 0) : pm2);
+    matHtml += '<tr>' +
+      '<td>' + (m.material || '') + ' <small style="color:var(--text4)">(' + (m.categoria || '') + ')</small></td>' +
+      '<td>' + (mon === 'USD' ? 'USD ' + pm2.toLocaleString('es-AR') : fmt(pm2)) + '</td>' +
+      '<td>' + (mon === 'USD' ? (m.tipoCambio ? fmt(m.tipoCambio) : '—') : '—') + '</td>' +
+      '<td>' + fmt(ars) + '</td>' +
+      '</tr>';
+  });
+  matHtml += '</tbody></table>';
+  if (tcUsado.length) {
+    const uniq = [...new Set(tcUsado)];
+    matHtml += '<div class="tc-note">Tipo de cambio usado el ' + new Date(p.fecha).toLocaleDateString('es-AR') + ': <strong>1 USD = ' + uniq.map(t => fmt(t)).join(' / ') + '</strong></div>';
+  }
+
   let html = '<div class="modal-overlay" onclick="if(event.target===this)closeModal()">' +
     '<div class="modal">' +
     '<button class="modal-close" onclick="closeModal()">×</button>' +
     '<h2>Presupuesto - ' + p.cliente + '</h2>' +
+    (p.sector ? '<p style="margin-bottom:8px"><strong style="color:var(--accent)">Sector: ' + p.sector + '</strong></p>' : '') +
     '<p style="color:var(--text4);margin-bottom:12px">' + fecha + (p.realizadoPor ? ' | Realizado por: ' + p.realizadoPor : '') + (p.plazoEntrega ? ' | Plazo: ' + p.plazoEntrega : '') + '</p>' +
-    '<table>' +
-    '<tr><td><strong>Material</strong></td><td>' + p.material + ' (' + p.categoria + ')</td></tr>' +
-    '</table>' +
-    '<h3 style="margin:12px 0 8px;color:var(--accent)">Piezas de Mesada</h3><table><thead><tr><th>#</th><th>Largo</th><th>Ancho</th></tr></thead><tbody>';
+    matHtml +
+    '<h3 style="margin:12px 0 8px;color:var(--accent)">Mesada</h3><table><thead><tr><th>#</th><th>Largo</th><th>Ancho</th></tr></thead><tbody>';
 
   p.mesadaPiezas.forEach((mp, i) => {
     html += '<tr><td>' + (i+1) + '</td><td>' + mp.largo + ' m</td><td>' + mp.ancho + ' m</td></tr>';
@@ -1504,9 +2549,17 @@ function verDetalle(id) {
   html += '</tbody></table>';
 
   if (p.zocaloPiezas && p.zocaloPiezas.length) {
-    html += '<h3 style="margin:12px 0 8px;color:var(--accent)">Piezas de Zocalo</h3><table><thead><tr><th>#</th><th>Largo</th><th>Alto</th></tr></thead><tbody>';
+    html += '<h3 style="margin:12px 0 8px;color:var(--accent)">Zocalo</h3><table><thead><tr><th>#</th><th>Largo</th><th>Alto</th></tr></thead><tbody>';
     p.zocaloPiezas.forEach((zp, i) => {
       html += '<tr><td>' + (i+1) + '</td><td>' + zp.largo + ' m</td><td>' + zp.alto + ' m</td></tr>';
+    });
+    html += '</tbody></table>';
+  }
+
+  if (p.frentePiezas && p.frentePiezas.length) {
+    html += '<h3 style="margin:12px 0 8px;color:var(--accent)">Frente doble</h3><table><thead><tr><th>#</th><th>Largo</th><th>Alto</th></tr></thead><tbody>';
+    p.frentePiezas.forEach((fp, i) => {
+      html += '<tr><td>' + (i+1) + '</td><td>' + fp.largo + ' m</td><td>' + fp.alto + ' m</td></tr>';
     });
     html += '</tbody></table>';
   }
@@ -1522,8 +2575,10 @@ function verDetalle(id) {
   html += '<div class="total-box" style="margin-top:16px">' +
     '<div class="total-line"><span>Mesada</span><span>' + fmt(p.costoMesada) + '</span></div>' +
     '<div class="total-line"><span>Zocalo</span><span>' + fmt(p.costoZocalo) + '</span></div>' +
+    (p.costoFrente ? '<div class="total-line"><span>Frente doble</span><span>' + fmt(p.costoFrente) + '</span></div>' : '') +
     '<div class="total-line"><span>Items</span><span>' + fmt(p.costoItems) + '</span></div>' +
-    '<div class="total-line grand"><span>TOTAL</span><span>' + fmt(p.total) + '</span></div>' +
+    (p.totalEditado ? '<div class="total-line" style="font-size:.8rem;opacity:.85"><span>Total calculado</span><span>' + fmt(p.totalCalculado) + '</span></div>' : '') +
+    '<div class="total-line grand"><span>TOTAL' + (p.totalEditado ? ' (ajustado)' : '') + '</span><span>' + fmt(p.total) + '</span></div>' +
     '</div>' +
     '</div></div>';
 
@@ -1535,6 +2590,7 @@ function buildPresupuestoText(p) {
   let text = '*PRESUPUESTO - MarmoCult*\n';
   text += '📅 ' + fecha + '\n';
   text += '👤 Cliente: ' + p.cliente + '\n';
+  if (p.sector) text += '📍 Sector: ' + p.sector + '\n';
   if (p.realizadoPor) text += '✏️ Realizado por: ' + p.realizadoPor + '\n';
   if (p.plazoEntrega) text += '📦 Plazo de entrega: ' + p.plazoEntrega + '\n';
   text += '🪨 Material: ' + p.material + ' (' + p.categoria + ')\n\n';
@@ -1551,6 +2607,13 @@ function buildPresupuestoText(p) {
       text += '  ' + (i+1) + '. ' + zp.largo + 'm × ' + zp.alto + 'm\n';
     });
     text += '  Subtotal: ' + fmt(p.costoZocalo) + '\n\n';
+  }
+  if (p.frentePiezas && p.frentePiezas.length) {
+    text += '*Frente doble:*\n';
+    p.frentePiezas.forEach((fp, i) => {
+      text += '  ' + (i+1) + '. ' + fp.largo + 'm × ' + fp.alto + 'm\n';
+    });
+    text += '  Subtotal: ' + fmt(p.costoFrente || 0) + '\n\n';
   }
   if (p.items && p.items.length) {
     text += '*Items:*\n';
@@ -1581,9 +2644,9 @@ function copiarHistorial(id) {
 }
 
 function buildHistorialPage(p, matOverride) {
-  const esc = s => String(s == null ? '' : s).replace(/"/g, '&quot;');
+  const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
   const fecha = new Date(p.fecha).toLocaleDateString('es-AR');
-  const m = matOverride || {material: p.material, categoria: p.categoria, costoMesada: p.costoMesada, costoZocalo: p.costoZocalo, total: p.total};
+  const m = matOverride || {material: p.material, categoria: p.categoria, costoMesada: p.costoMesada, costoZocalo: p.costoZocalo, costoFrente: p.costoFrente, total: p.total};
 
   let mesadaHtml = '';
   (p.mesadaPiezas || []).forEach((mp, i) => {
@@ -1605,14 +2668,28 @@ function buildHistorialPage(p, matOverride) {
     '</div>';
   });
 
-  let itemsHtml = '';
-  (p.items || []).forEach(it => {
-    itemsHtml += '<div class="total-line"><span>' + it.nombre + ' ×' + it.cantidad + '</span><span>' + fmt(it.precio * it.cantidad) + '</span></div>';
+  let frenteHtml = '';
+  (p.frentePiezas || []).forEach((fp, i) => {
+    frenteHtml += '<div class="piece-row">' +
+      '<span class="piece-label">#' + (i+1) + '</span>' +
+      '<input type="number" value="' + (fp.largo||'') + '" readonly><span class="unit-m">m</span>' +
+      '<span class="piece-label">x</span>' +
+      '<input type="number" value="' + (fp.alto||'') + '" readonly><span class="unit-m">m</span>' +
+    '</div>';
   });
 
-  let resumen = '<div class="total-line"><span>Mesada</span><span>' + fmt(m.costoMesada||0) + '</span></div>';
+  let itemsHtml = '';
+  (p.items || []).forEach(it => {
+    itemsHtml += '<div class="total-line"><span>' + it.nombre + ' ×' + it.cantidad + '</span><span></span></div>';
+  });
+
+  // Desglose de conceptos, sin importes: el TOTAL puede venir redondeado a mano
+  let resumen = '<div class="total-line"><span>Mesada</span><span></span></div>';
   if ((p.zocaloM2 || 0) > 0 || (p.zocaloPiezas || []).length) {
-    resumen += '<div class="total-line"><span>Zocalo</span><span>' + fmt(m.costoZocalo||0) + '</span></div>';
+    resumen += '<div class="total-line"><span>Zocalo</span><span></span></div>';
+  }
+  if ((p.frenteM2 || 0) > 0 || (p.frentePiezas || []).length) {
+    resumen += '<div class="total-line"><span>Frente doble</span><span></span></div>';
   }
   resumen += itemsHtml;
   resumen += '<div class="total-line grand"><span>TOTAL</span><span>' + fmt(m.total||0) + '</span></div>';
@@ -1635,11 +2712,13 @@ function buildHistorialPage(p, matOverride) {
       '</div>' +
       '<div style="color:var(--text4);font-size:.85rem;margin-top:4px">Fecha: ' + fecha + '</div>' +
     '</div>' +
+    '<div class="print-sector">' + esc(p.sector) + '</div>' +
     '<div class="card"><h2>Material</h2>' +
       '<div style="font-size:1rem;font-weight:600;margin-bottom:8px">' + (m.material||'') + ' — ' + (m.categoria||'') + '</div>' +
     '</div>' +
-    (mesadaHtml ? '<div class="card"><h2>Piezas de Mesada</h2>' + mesadaHtml + '</div>' : '') +
-    (zocaloHtml ? '<div class="card"><h2>Piezas de Zocalo</h2>' + zocaloHtml + '</div>' : '') +
+    (mesadaHtml ? '<div class="card"><h2>Mesada</h2>' + mesadaHtml + '</div>' : '') +
+    (zocaloHtml ? '<div class="card"><h2>Zocalo</h2>' + zocaloHtml + '</div>' : '') +
+    (frenteHtml ? '<div class="card"><h2>Frente doble</h2>' + frenteHtml + '</div>' : '') +
     '<div class="total-box"><h3>Resumen del Presupuesto</h3>' + resumen + '</div>' +
     '<div class="print-condiciones">' +
       '<p>El presupuesto puede variar sin previo aviso.</p>' +
